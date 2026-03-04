@@ -1,32 +1,23 @@
-const { Resend } = require('resend');
-
-// Initialize Resend with your API Key
-const resend = new Resend(process.env.RESEND_API_KEY);
+const nodemailer = require('nodemailer');
 
 const sendEmail = async (options) => {
-    if (!process.env.RESEND_API_KEY) {
-        throw new Error('RESEND_API_KEY is missing. Please add it to your Render Environment Variables.');
-    }
+    const transporter = nodemailer.createTransport({
+        service: 'gmail', // or use host/port from env
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS,
+        },
+    });
 
-    try {
-        const data = await resend.emails.send({
-            // Note: Resend Free Tier only allows sending FROM this exact address:
-            from: 'Service At Your Home <onboarding@resend.dev>',
-            to: options.email, // In Free Tier, this must be the email you used to sign up for Resend!
-            subject: options.subject,
-            text: options.message,
-            html: options.html || `<p>${options.message}</p>`,
-        });
+    const mailOptions = {
+        from: `"Service at Your Home" <${process.env.EMAIL_USER}>`,
+        to: options.email,
+        subject: options.subject,
+        text: options.message,
+        html: options.html,
+    };
 
-        if (data.error) {
-            throw new Error(data.error.message);
-        }
-
-        return data;
-    } catch (error) {
-        console.error('Resend Error:', error);
-        throw error;
-    }
+    await transporter.sendMail(mailOptions);
 };
 
 module.exports = sendEmail;
