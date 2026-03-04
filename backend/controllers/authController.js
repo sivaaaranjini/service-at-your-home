@@ -45,20 +45,19 @@ const registerUser = async (req, res) => {
 
         // 5. Send OTP Email
         const message = `Your verification code is ${otp}. Valid for 10 minutes.`;
-        try {
-            await sendEmail({
-                email: email,
-                subject: 'Account Verification OTP',
-                message,
-            });
-            res.status(201).json({
-                email: email,
-                message: 'OTP sent to email. Please verify.',
-            });
-        } catch (error) {
-            console.error(error);
-            res.status(500).json({ message: 'User registered but email failed to send.' });
-        }
+
+        // Execute email sending in background to prevent SMTP hanging on Render IPs
+        sendEmail({
+            email: email,
+            subject: 'Account Verification OTP',
+            message,
+        }).catch(err => console.error("SMTP Error:", err.message));
+
+        res.status(201).json({
+            email: email,
+            message: 'OTP registered. Please verify.',
+            dev_otp: otp // Added for debugging if email fails
+        });
 
     } catch (error) {
         console.error("Register Error:", error);

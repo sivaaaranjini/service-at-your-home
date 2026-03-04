@@ -20,8 +20,9 @@ const Register = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/register`, formData);
-            toast.success('Registration successful. Please check your email for OTP.');
+            const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/register`, formData);
+            const devOtp = res.data.dev_otp;
+            toast.success(`Registration successful! Your OTP is: ${devOtp}`);
             navigate('/verify-otp', { state: { email: formData.email } });
         } catch (error) {
             toast.error(error.response?.data?.message || 'Registration failed');
