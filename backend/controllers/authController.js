@@ -48,20 +48,17 @@ const registerUser = async (req, res) => {
 
         // Execute email sending in background to prevent SMTP hanging on Render IPs
         // Execute email sending in background to prevent SMTP hanging on Render IPs
-        try {
-            await sendEmail({
-                email: email,
-                subject: 'Account Verification OTP',
-                message,
-            });
-            res.status(201).json({
-                email: email,
-                message: 'OTP sent to email. Please verify.',
-            });
-        } catch (error) {
-            console.error(error);
-            res.status(500).json({ message: 'User registered but email failed to send. Please check your App Password.' });
-        }
+        sendEmail({
+            email: email,
+            subject: 'Account Verification OTP',
+            message,
+        }).catch(err => console.error("SMTP Error:", err.message));
+
+        res.status(201).json({
+            email: email,
+            message: 'OTP registered. Please verify.',
+            dev_otp: otp // Added for debugging if email fails
+        });
 
     } catch (error) {
         console.error("Register Error:", error);
