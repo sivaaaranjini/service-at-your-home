@@ -15,7 +15,7 @@ const allowedOrigins = process.env.CLIENT_URL ? process.env.CLIENT_URL.split(','
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: allowedOrigins,
+        origin: "*",
         methods: ["GET", "POST"]
     }
 });
@@ -23,7 +23,9 @@ const io = new Server(server, {
 // Middleware
 app.use(express.json());
 app.use(cors({
-    origin: allowedOrigins,
+    origin: function (origin, callback) {
+        callback(null, true);
+    },
     credentials: true
 }));
 
