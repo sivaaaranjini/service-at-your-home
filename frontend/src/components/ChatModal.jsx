@@ -17,7 +17,7 @@ const ChatModal = ({ booking, onClose }) => {
 
     useEffect(() => {
         // Connect to the socket server
-        const newSocket = io(`\${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`);
+        const newSocket = io(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`);
         setSocket(newSocket);
 
         // Join the room for this specific booking ID
@@ -38,7 +38,7 @@ const ChatModal = ({ booking, onClose }) => {
         const fetchMessages = async () => {
             try {
                 const config = { headers: { Authorization: `Bearer ${user.token}` } };
-                const res = await axios.get(`\${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/messages/${booking._id}`, config);
+                const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/messages/${booking._id}`, config);
                 setMessages(res.data);
             } catch (error) {
                 console.error("Chat Fetch Error:", error.response || error);
@@ -75,7 +75,7 @@ const ChatModal = ({ booking, onClose }) => {
 
             // Then persist to database asynchronously
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.post(`\${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/messages`, {
+            await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/messages`, {
                 bookingId: booking._id,
                 text: messageData.text
             }, config);

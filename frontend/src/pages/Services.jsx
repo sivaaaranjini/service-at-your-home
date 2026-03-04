@@ -15,7 +15,7 @@ const Services = () => {
     const fetchServices = async () => {
         setLoading(true);
         try {
-            let url = `\${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services`;
+            let url = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services`;
             const params = {};
             if (category) params.category = category;
             if (searchTerm) params.search = searchTerm;

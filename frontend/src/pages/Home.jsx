@@ -15,11 +15,11 @@ const Home = () => {
         const fetchInitialData = async () => {
             try {
                 // Fetch Popular Services
-                const resServices = await axios.get(`\${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services`);
+                const resServices = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services`);
                 setServices(resServices.data.slice(0, 3)); // Show top 3
 
                 // Fetch Top Providers
-                const resProviders = await axios.get(`\${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/top-providers`);
+                const resProviders = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/top-providers`);
                 setTopProviders(resProviders.data);
             } catch (error) {
                 console.error('Error fetching data:', error);

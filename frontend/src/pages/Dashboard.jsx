@@ -11,7 +11,7 @@ import generateInvoice from '../utils/generateInvoice';
 import { io } from 'socket.io-client';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const socket = io(`\${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`);
+const socket = io(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`);
 
 const Dashboard = () => {
     const { user } = useContext(AuthContext);
@@ -109,7 +109,7 @@ const Dashboard = () => {
     const fetchMyServices = async () => {
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const res = await axios.get(`\${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services/my-services`, config);
+            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services/my-services`, config);
             setMyServices(res.data);
         } catch (error) {
             console.error('Failed to fetch my services', error);
@@ -119,7 +119,7 @@ const Dashboard = () => {
     const fetchUnapprovedProviders = async () => {
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const res = await axios.get(`\${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/users`, config);
+            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/users`, config);
             // Filter on client side or backend should filter. backend returns all users.
             const providers = res.data.filter(u => u.role === 'provider' && !u.isProviderApproved);
             setUnapprovedProviders(providers);
@@ -131,7 +131,7 @@ const Dashboard = () => {
     const handleApproveProvider = async (id) => {
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.put(`\${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/approve-provider/${id}`, {}, config);
+            await axios.put(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/approve-provider/${id}`, {}, config);
             toast.success('Provider approved');
             fetchUnapprovedProviders();
         } catch (error) {
@@ -142,7 +142,7 @@ const Dashboard = () => {
     const fetchComplaints = async () => {
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const res = await axios.get(`\${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/complaints`, config);
+            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/complaints`, config);
             setComplaints(res.data);
         } catch (error) {
             console.error('Failed to fetch complaints');
@@ -152,7 +152,7 @@ const Dashboard = () => {
     const fetchAllUsers = async () => {
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const res = await axios.get(`\${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/users`, config);
+            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/users`, config);
             setAllUsers(res.data);
         } catch (error) {
             console.error('Failed to fetch users:', error);
@@ -161,7 +161,7 @@ const Dashboard = () => {
 
     const fetchAllServices = async () => {
         try {
-            const res = await axios.get(`\${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services`);
+            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services`);
             setAllServices(res.data);
         } catch (error) {
             console.error('Failed to fetch services:', error);
@@ -172,7 +172,7 @@ const Dashboard = () => {
         if (!window.confirm('Are you sure you want to completely ban and delete this user?')) return;
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.delete(`\${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/users/${id}`, config);
+            await axios.delete(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/users/${id}`, config);
             toast.success('User deleted successfully');
             fetchAllUsers();
             fetchUnapprovedProviders(); // Refresh pending list just in case
@@ -185,7 +185,7 @@ const Dashboard = () => {
         if (!window.confirm('Are you sure you want to forcibly remove this service?')) return;
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.delete(`\${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services/${id}`, config);
+            await axios.delete(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services/${id}`, config);
             toast.success('Service removed from platform');
             fetchAllServices();
         } catch (error) {
@@ -197,7 +197,7 @@ const Dashboard = () => {
         if (!complaintText.trim()) return;
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.post(`\${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/complaints`, {
+            await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/complaints`, {
                 bookingId: selectedBookingForComplaint,
                 description: complaintText
             }, config);
@@ -213,7 +213,7 @@ const Dashboard = () => {
         if (!window.confirm('Are you sure you want to remove this service from your portfolio?')) return;
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.delete(`\${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services/${id}`, config);
+            await axios.delete(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services/${id}`, config);
             toast.success('Service successfully removed');
             fetchMyServices();
         } catch (error) {
@@ -224,7 +224,7 @@ const Dashboard = () => {
     const handleResolveComplaint = async (id, action) => {
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.put(`\${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/complaints/${id}/resolve`, { action }, config);
+            await axios.put(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/complaints/${id}/resolve`, { action }, config);
             toast.success(`Complaint successfully resolved (${action})`);
             fetchComplaints();
         } catch (error) {
@@ -254,7 +254,7 @@ const Dashboard = () => {
 
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.post(`\${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services`, serviceData, config);
+            await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services`, serviceData, config);
             toast.success('Service added successfully');
             e.target.reset();
             fetchMyServices(); // Refresh portfolio immediately
@@ -269,7 +269,7 @@ const Dashboard = () => {
             const config = {
                 headers: { Authorization: `Bearer ${user.token}` },
             };
-            const res = await axios.get(`\${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/bookings`, config);
+            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/bookings`, config);
             setBookings(res.data);
         } catch (error) {
             console.error(error);
@@ -282,7 +282,7 @@ const Dashboard = () => {
     const handleUpdateBookingStatus = async (bookingId, newStatus) => {
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.put(`\${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/bookings/${bookingId}/status`, { status: newStatus }, config);
+            await axios.put(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/bookings/${bookingId}/status`, { status: newStatus }, config);
             toast.success(`Booking status updated to ${newStatus}`);
             fetchBookings();
         } catch (error) {
@@ -301,7 +301,7 @@ const Dashboard = () => {
             // Actually, we don't have a direct "mark paid" endpoint for users.
             // We rely on verifyPayment.
             // Let's just create a dummy Payment verify call.
-            await axios.post(`\${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/payments/verify`, {
+            await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/payments/verify`, {
                 bookingId,
                 razorpay_order_id: 'test_order',
                 razorpay_payment_id: 'test_payment',
@@ -321,7 +321,7 @@ const Dashboard = () => {
 
         try {
             const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const res = await axios.post(`\${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/bookings/verify-provider`, {
+            const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/bookings/verify-provider`, {
                 bookingId: selectedBookingId,
                 scannedProviderId: scannedData
             }, config);

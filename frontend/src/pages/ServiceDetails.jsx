@@ -16,7 +16,7 @@ const ServiceDetails = () => {
     useEffect(() => {
         const fetchService = async () => {
             try {
-                const res = await axios.get(`\${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services/${id}`);
+                const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services/${id}`);
                 setService(res.data);
             } catch (error) {
                 console.error(error);
@@ -46,7 +46,7 @@ const ServiceDetails = () => {
                 }
             };
 
-            await axios.post(`\${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/bookings`, {
+            await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/bookings`, {
                 serviceId: id,
                 date,
                 time

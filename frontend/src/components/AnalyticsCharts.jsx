@@ -37,7 +37,7 @@ const AnalyticsCharts = ({ bookings, role, token }) => {
             const fetchAdminRevenue = async () => {
                 try {
                     const config = { headers: { Authorization: `Bearer ${token}` } };
-                    const res = await axios.get(`\${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/revenue`, config);
+                    const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/revenue`, config);
                     setAdminRevenueData(res.data);
                 } catch (error) {
                     console.error('Failed to fetch admin revenue', error);
