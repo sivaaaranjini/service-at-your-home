@@ -56,8 +56,7 @@ const registerUser = async (req, res) => {
 
         res.status(201).json({
             email: email,
-            message: 'OTP registered. Please verify.',
-            dev_otp: otp // Added for debugging if email fails
+            message: 'OTP sent to email. Please verify.',
         });
 
     } catch (error) {
