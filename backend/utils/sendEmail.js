@@ -24,9 +24,12 @@ const sendEmail = async (options) => {
         textContent: options.message
     };
 
-    const key = process.env.EMAIL_PASS || '';
-    console.log(`Brevo API Call Trace: URL=${url}, Sender=${process.env.EMAIL_USER}`);
-    console.log(`Key Check: Length=${key.length}, Prefix=${key.substring(0, 8)}...`);
+    const key = (process.env.EMAIL_PASS || '').trim();
+    console.log(`[BREVO_DEBUG] Sender: ${process.env.EMAIL_USER} | KeyLength: ${key.length} | Prefix: ${key.substring(0, 8)}...`);
+
+    if (!key.startsWith('xkeysib-')) {
+        console.error('[BREVO_CRITICAL] API Key does NOT start with xkeysib-. You are using the wrong key!');
+    }
 
     try {
         const response = await fetch(url, {
