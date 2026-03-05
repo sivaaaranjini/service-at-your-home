@@ -1,38 +1,61 @@
-const SibApiV3Sdk = require('@getbrevo/brevo');
+const fetch = require('node-fetch');
 
 /**
- * Sends an email using the official Brevo Transactional Email SDK.
- * This ensures the request is perfectly formatted and authenticated.
+ * Sends an email using Brevo's Transactional Email API (HTTP)
+ * Using fetch is more reliable than the SDK which can have versioning issues.
  */
 const sendEmail = async (options) => {
-    const defaultClient = SibApiV3Sdk.ApiClient.instance;
-    const apiKey = defaultClient.authentications['api-key'];
-
-    // Ensure the key is clean and valid
     const key = (process.env.EMAIL_PASS || '').trim();
+    const user = (process.env.EMAIL_USER || '').trim();
 
-    if (!key.startsWith('xkeysib-')) {
-        console.error('[BREVO_CRITICAL] Your EMAIL_PASS does not start with xkeysib-. This will fail!');
+    if (!key || !user) {
+        throw new Error('EMAIL_USER or EMAIL_PASS is missing from environment');
     }
 
-    apiKey.apiKey = key;
+    // CRITICAL: Log info to see what is happening in Render
+    console.log(`[BREVO_INFO] Sending to: ${options.email}`);
+    console.log(`[BREVO_INFO] Using Key Prefix: ${key.substring(0, 8)} | Length: ${key.length}`);
 
-    const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
-    const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+    if (!key.startsWith('xkeysib-')) {
+        console.error('[BREVO_CRITICAL] API Key does NOT start with xkeysib-. This is likely a Gmail password!');
+    }
 
-    sendSmtpEmail.subject = options.subject;
-    sendSmtpEmail.htmlContent = options.html || `<html><body><p>${options.message}</p></body></html>`;
-    sendSmtpEmail.sender = { name: "Service at Your Home", email: process.env.EMAIL_USER };
-    sendSmtpEmail.to = [{ email: options.email }];
-    sendSmtpEmail.textContent = options.message;
+    const url = 'https://api.brevo.com/v3/smtp/email';
+
+    const data = {
+        sender: {
+            name: "Service at Your Home",
+            email: user
+        },
+        to: [{
+            email: options.email
+        }],
+        subject: options.subject,
+        htmlContent: options.html || `<html><body><p>${options.message}</p></body></html>`,
+    };
 
     try {
-        console.log(`[BREVO_DEBUG] Sending email to ${options.email} via Brevo SDK...`);
-        const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
-        console.log('[BREVO_DEBUG] Brevo SDK Send Success:', JSON.stringify(data));
-        return data;
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'accept': 'application/json',
+                'api-key': key,
+                'content-type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            console.error('[BREVO_API_ERROR]', JSON.stringify(result));
+            throw new Error(result.message || 'Brevo API rejected the request');
+        }
+
+        console.log('[BREVO_SUCCESS] Email sent successfully');
+        return result;
     } catch (error) {
-        console.error('[BREVO_ERROR] SDK Error Detail:', error.response ? JSON.stringify(error.response.text) : error.message);
+        console.error('[BREVO_TRANSPORT_ERROR]', error.message);
         throw error;
     }
 };
