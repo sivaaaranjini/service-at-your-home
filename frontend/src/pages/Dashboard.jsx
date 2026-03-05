@@ -60,15 +60,49 @@ const Dashboard = () => {
         };
     }, []);
 
+    // Join Rooms for Active Bookings
+    useEffect(() => {
+        if (user && bookings.length > 0) {
+            const activeStatuses = ['Accepted', 'OnTheWay', 'In Progress', 'Paid'];
+            bookings.forEach(booking => {
+                if (activeStatuses.includes(booking.status)) {
+                    socket.emit('join_room', booking._id);
+                    console.log(`[SOCKET] Auto-joined room for booking: ${booking._id}`);
+                }
+            });
+        }
+    }, [bookings, user]);
+
     // Provider Geolocation Emitter
+    const [isSimulating, setIsSimulating] = useState(false);
     useEffect(() => {
         let watchId;
+        let simInterval;
+
         if (user?.role === 'provider' && user?.isProviderApproved) {
-            // Find if there are any active 'OnTheWay' bookings
             const activeTrips = bookings.filter(b => b.status === 'OnTheWay');
 
             if (activeTrips.length > 0) {
-                if ('geolocation' in navigator) {
+                if (isSimulating) {
+                    console.log("[GPS] Starting Simulation...");
+                    let step = 0;
+                    simInterval = setInterval(() => {
+                        // Move slightly away from Center of India for each step
+                        const baseLat = 20.5937;
+                        const baseLng = 78.9629;
+                        const lat = baseLat + (step * 0.001);
+                        const lng = baseLng + (step * 0.001);
+
+                        activeTrips.forEach(trip => {
+                            socket.emit('update_location', {
+                                bookingId: trip._id,
+                                lat: lat,
+                                lng: lng
+                            });
+                        });
+                        step++;
+                    }, 3000);
+                } else if ('geolocation' in navigator) {
                     watchId = navigator.geolocation.watchPosition(
                         (position) => {
                             const { latitude, longitude } = position.coords;
@@ -88,8 +122,9 @@ const Dashboard = () => {
         }
         return () => {
             if (watchId) navigator.geolocation.clearWatch(watchId);
+            if (simInterval) clearInterval(simInterval);
         };
-    }, [bookings, user]);
+    }, [bookings, user, isSimulating]);
 
     useEffect(() => {
         if (user) {
@@ -601,7 +636,23 @@ const Dashboard = () => {
                     <div className="bg-white p-6 rounded-lg shadow-md mb-8 flex flex-col items-center">
                         <h2 className="text-xl font-bold mb-4">Your Provider Identity QR</h2>
                         <QRCodeSVG value={user._id} size={200} />
-                        <p className="mt-4 text-gray-600">Show this to customers upon arrival to start the service.</p>
+                        <p className="mt-4 text-gray-600 mb-6">Show this to customers upon arrival to start the service.</p>
+
+                        <div className="w-full pt-6 border-t border-gray-100 flex flex-col items-center">
+                            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">Testing Tools</h3>
+                            <button
+                                onClick={() => setIsSimulating(!isSimulating)}
+                                className={`px-6 py-3 rounded-full font-bold shadow-lg transition-all transform active:scale-95 ${isSimulating
+                                        ? 'bg-red-100 text-red-600 border-2 border-red-600 hover:bg-red-200'
+                                        : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-200'
+                                    }`}
+                            >
+                                {isSimulating ? '🛑 Stop GPS Simulation' : '🚀 Start Live GPS Simulation'}
+                            </button>
+                            <p className="text-[10px] text-gray-400 mt-2 text-center max-w-[200px]">
+                                Use this to verify the Customer sees your "car" moving on their live map.
+                            </p>
+                        </div>
                     </div>
 
                     <div className="bg-white p-6 rounded-lg shadow-md">
