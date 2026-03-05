@@ -93,23 +93,41 @@ const Dashboard = () => {
             if (activeTrips.length > 0) {
                 if (isSimulating) {
                     console.log("[GPS] Starting Simulation...");
-                    let step = 0;
-                    simInterval = setInterval(() => {
-                        // Move slightly away from Center of India for each step
-                        const baseLat = 20.5937;
-                        const baseLng = 78.9629;
-                        const lat = baseLat + (step * 0.001);
-                        const lng = baseLng + (step * 0.001);
 
-                        activeTrips.forEach(trip => {
-                            socket.emit('update_location', {
-                                bookingId: trip._id,
-                                lat: lat,
-                                lng: lng
+                    // Try to get CURRENT location as base for simulation
+                    navigator.geolocation.getCurrentPosition((pos) => {
+                        const baseLat = pos.coords.latitude;
+                        const baseLng = pos.coords.longitude;
+                        let step = 0;
+
+                        simInterval = setInterval(() => {
+                            // Move speed: ~100m per 2 seconds
+                            const lat = baseLat + (step * 0.0005);
+                            const lng = baseLng + (step * 0.0005);
+
+                            activeTrips.forEach(trip => {
+                                socket.emit('update_location', {
+                                    bookingId: trip._id,
+                                    lat: lat,
+                                    lng: lng
+                                });
                             });
-                        });
-                        step++;
-                    }, 3000);
+                            step++;
+                        }, 2000);
+                    }, (err) => {
+                        // Fallback if GPS denied: Use a city in India (e.g. Coimbatore center)
+                        const baseLat = 11.0168;
+                        const baseLng = 76.9558;
+                        let step = 0;
+                        simInterval = setInterval(() => {
+                            const lat = baseLat + (step * 0.0005);
+                            const lng = baseLng + (step * 0.0005);
+                            activeTrips.forEach(trip => {
+                                socket.emit('update_location', { bookingId: trip._id, lat, lng });
+                            });
+                            step++;
+                        }, 2000);
+                    });
                 } else if ('geolocation' in navigator) {
                     watchId = navigator.geolocation.watchPosition(
                         (position) => {
