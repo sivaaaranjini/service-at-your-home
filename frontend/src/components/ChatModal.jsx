@@ -1,35 +1,22 @@
-import React, { useState, useEffect, useRef, useContext } from 'react';
-import axios from 'axios';
-import { io } from 'socket.io-client';
-import AuthContext from '../context/AuthContext';
-import { toast } from 'react-toastify';
-
-// Initialize socket connection outside the component so it persists,
-// or inside useEffect if you only want it active while modal is open.
-// Doing it inside is safer for cleanup across different bookings.
+import socket from '../utils/socket';
 
 const ChatModal = ({ booking, onClose }) => {
     const { user } = useContext(AuthContext);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
-    const [socket, setSocket] = useState(null);
     const scrollRef = useRef();
 
     useEffect(() => {
-        // Connect to the socket server
-        const newSocket = io(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`);
-        setSocket(newSocket);
-
         // Join the room for this specific booking ID
-        newSocket.emit('join_room', booking._id);
+        socket.emit('join_room', booking._id);
 
         // Listen for incoming messages in real-time
-        newSocket.on('receive_message', (messageData) => {
+        socket.on('receive_message', (messageData) => {
             setMessages((prev) => [...prev, messageData]);
         });
 
         return () => {
-            newSocket.disconnect();
+            socket.off('receive_message');
         };
     }, [booking._id]);
 

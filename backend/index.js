@@ -74,12 +74,14 @@ io.on('connection', (socket) => {
     // Handle Live GPS Tracking (Phase 5)
     socket.on('update_location', (data) => {
         // data = { bookingId, lat, lng }
+        console.log(`[GPS_SIGNAL] Booking: ${data.bookingId} | Lat: ${data.lat} | Lng: ${data.lng}`);
         // Broadcast the provider's coordinates directly to the customer in the same room
         socket.to(data.bookingId).emit('receive_location', data);
     });
 
     // Handle Admin Global Broadcasts
     socket.on('admin_broadcast', (message) => {
+        console.log(`[BROADCAST] ${message}`);
         // Broadcast to all connected clients
         io.emit('receive_broadcast', message);
     });

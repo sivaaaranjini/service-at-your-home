@@ -8,10 +8,7 @@ import ChatModal from '../components/ChatModal';
 import AnalyticsCharts from '../components/AnalyticsCharts';
 import LiveTrackingMap from '../components/LiveTrackingMap';
 import generateInvoice from '../utils/generateInvoice';
-import { io } from 'socket.io-client';
-import { motion, AnimatePresence } from 'framer-motion';
-
-const socket = io(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`);
+import socket from '../utils/socket';
 
 const Dashboard = () => {
     const { user } = useContext(AuthContext);
@@ -62,15 +59,25 @@ const Dashboard = () => {
 
     // Join Rooms for Active Bookings
     useEffect(() => {
-        if (user && bookings.length > 0) {
-            const activeStatuses = ['Accepted', 'OnTheWay', 'In Progress', 'Paid'];
-            bookings.forEach(booking => {
-                if (activeStatuses.includes(booking.status)) {
-                    socket.emit('join_room', booking._id);
-                    console.log(`[SOCKET] Auto-joined room for booking: ${booking._id}`);
-                }
-            });
-        }
+        const joinActiveRooms = () => {
+            if (user && bookings.length > 0) {
+                const activeStatuses = ['Accepted', 'OnTheWay', 'In Progress', 'Paid'];
+                bookings.forEach(booking => {
+                    if (activeStatuses.includes(booking.status)) {
+                        socket.emit('join_room', booking._id);
+                        console.log(`[SOCKET] Joining room for booking: ${booking._id}`);
+                    }
+                });
+            }
+        };
+
+        joinActiveRooms();
+
+        // Also rejoin on reconnect
+        socket.on('connect', joinActiveRooms);
+        return () => {
+            socket.off('connect', joinActiveRooms);
+        };
     }, [bookings, user]);
 
     // Provider Geolocation Emitter
@@ -643,8 +650,8 @@ const Dashboard = () => {
                             <button
                                 onClick={() => setIsSimulating(!isSimulating)}
                                 className={`px-6 py-3 rounded-full font-bold shadow-lg transition-all transform active:scale-95 ${isSimulating
-                                        ? 'bg-red-100 text-red-600 border-2 border-red-600 hover:bg-red-200'
-                                        : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-200'
+                                    ? 'bg-red-100 text-red-600 border-2 border-red-600 hover:bg-red-200'
+                                    : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-200'
                                     }`}
                             >
                                 {isSimulating ? '🛑 Stop GPS Simulation' : '🚀 Start Live GPS Simulation'}

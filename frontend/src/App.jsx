@@ -12,10 +12,7 @@ import ServiceDetails from './pages/ServiceDetails';
 import VerifyOtp from './pages/VerifyOtp';
 import Services from './pages/Services';
 import Dashboard from './pages/Dashboard';
-import { io } from 'socket.io-client';
-import { useEffect } from 'react';
-
-const socket = io(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}`);
+import socket from './utils/socket';
 
 function App() {
   useEffect(() => {
