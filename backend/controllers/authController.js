@@ -8,9 +8,10 @@ const bcrypt = require('bcryptjs');
 // @access  Public
 const registerUser = async (req, res) => {
     const { name, email, password, role } = req.body;
+    console.log('Registration Attempt:', { name, email, role });
 
     try {
-        // 1. Check if user already exists in main database
+        // 1. Check if user already exists
         const { data: userExists, error: userError } = await supabase
             .from('users')
             .select('*')
@@ -18,7 +19,13 @@ const registerUser = async (req, res) => {
             .single();
 
         if (userExists) {
+            console.log('Registration Blocked: User already exists');
             return res.status(400).json({ message: 'User already exists and is verified. Please Login.' });
+        }
+
+        if (userError && userError.code !== 'PGRST116') {
+            console.error('Supabase Query Error:', userError);
+            throw userError;
         }
 
         // 2. Hash password
@@ -27,11 +34,11 @@ const registerUser = async (req, res) => {
 
         // 3. Generate 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const expiry = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes from now
+        const expiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-        console.log('DEV ONLY - Generated OTP:', otp); // Log OTP for testing
+        console.log(`Generated OTP for ${email}: ${otp}`);
 
-        // 4. Store OTP temporarily in `otps` table (upsert based on email)
+        // 4. Store OTP temporarily
         const { error: otpError } = await supabase
             .from('otps')
             .upsert(
@@ -40,7 +47,8 @@ const registerUser = async (req, res) => {
             );
 
         if (otpError) {
-            throw otpError;
+            console.error('OTP Storage Error:', otpError);
+            return res.status(400).json({ message: otpError.message });
         }
 
         // 5. Send OTP Email
