@@ -34,11 +34,10 @@ const registerUser = async (req, res) => {
 
         // 3. Generate 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const expiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-
         console.log(`Generated OTP for ${email}: ${otp}`);
 
         // 4. Store OTP temporarily
+        console.log('Attempting Supabase Upsert...');
         const { error: otpError } = await supabase
             .from('otps')
             .upsert(
@@ -47,25 +46,28 @@ const registerUser = async (req, res) => {
             );
 
         if (otpError) {
-            console.error('OTP Storage Error:', otpError);
+            console.error('OTP Storage Error:', JSON.stringify(otpError));
             return res.status(400).json({ message: otpError.message });
         }
+        console.log('Supabase Upsert Successful');
 
         // 5. Send OTP Email
         const message = `Your verification code is ${otp}. Valid for 10 minutes.`;
 
-        // Execute email sending
+        console.log('Attempting to send email via Brevo...');
         try {
             await sendEmail({
                 email: email,
                 subject: 'Account Verification OTP',
                 message,
             });
+            console.log('Email sent successfully');
         } catch (error) {
-            console.error("Email Error:", error.message);
-            return res.status(500).json({ message: 'User created but OTP email failed. Please check your Brevo SMTP key.' });
+            console.error("Email Sending Error Trace:", error);
+            return res.status(500).json({ message: 'User created but OTP email failed to send. Check your Brevo settings.' });
         }
 
+        console.log('Registration flow complete for:', email);
         res.status(201).json({
             email: email,
             message: 'OTP sent to email. Please verify.',
