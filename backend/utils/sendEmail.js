@@ -24,12 +24,16 @@ const sendEmail = async (options) => {
         textContent: options.message
     };
 
+    const key = process.env.EMAIL_PASS || '';
+    console.log(`Brevo API Call Trace: URL=${url}, Sender=${process.env.EMAIL_USER}`);
+    console.log(`Key Check: Length=${key.length}, Prefix=${key.substring(0, 8)}...`);
+
     try {
         const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'accept': 'application/json',
-                'api-key': process.env.EMAIL_PASS,
+                'api-key': key.trim(),
                 'content-type': 'application/json'
             },
             body: JSON.stringify(data)
