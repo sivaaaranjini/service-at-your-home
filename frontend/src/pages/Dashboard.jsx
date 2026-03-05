@@ -8,6 +8,7 @@ import ChatModal from '../components/ChatModal';
 import AnalyticsCharts from '../components/AnalyticsCharts';
 import LiveTrackingMap from '../components/LiveTrackingMap';
 import generateInvoice from '../utils/generateInvoice';
+import { motion, AnimatePresence } from 'framer-motion';
 import socket from '../utils/socket';
 
 const Dashboard = () => {

@@ -1,3 +1,7 @@
+import React, { useState, useEffect, useRef, useContext } from 'react';
+import axios from 'axios';
+import AuthContext from '../context/AuthContext';
+import { toast } from 'react-toastify';
 import socket from '../utils/socket';
 
 const ChatModal = ({ booking, onClose }) => {

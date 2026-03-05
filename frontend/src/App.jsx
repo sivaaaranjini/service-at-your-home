@@ -12,6 +12,7 @@ import ServiceDetails from './pages/ServiceDetails';
 import VerifyOtp from './pages/VerifyOtp';
 import Services from './pages/Services';
 import Dashboard from './pages/Dashboard';
+import { useEffect } from 'react';
 import socket from './utils/socket';
 
 function App() {
