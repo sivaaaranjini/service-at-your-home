@@ -10,6 +10,7 @@ import LiveTrackingMap from '../components/LiveTrackingMap';
 import generateInvoice from '../utils/generateInvoice';
 import { motion, AnimatePresence } from 'framer-motion';
 import socket from '../utils/socket';
+import { MessageSquare, QrCode, AlertTriangle, FileText, Trash2, ShieldOff, PlusCircle, ArrowUpRight, Wallet, X, RotateCcw, XCircle } from 'lucide-react';
 
 const Dashboard = () => {
     const { user } = useContext(AuthContext);
@@ -410,189 +411,259 @@ const Dashboard = () => {
             )}
 
             {user.role === 'provider' && user.isProviderApproved && (
-                <div className="mb-12">
-                    <h2 className="text-2xl font-bold mb-4 text-gray-800">Earnings Wallet</h2>
-                    <div className="bg-gradient-to-br from-green-500 to-emerald-700 rounded-2xl shadow-xl p-6 mb-10 text-white flex flex-col md:flex-row justify-between items-center gap-6">
-                        <div className="text-center md:text-left">
-                            <p className="text-xs font-bold text-green-100 uppercase tracking-widest opacity-80">Available Balance</p>
-                            <h3 className="text-5xl font-black mt-1">₹{bookings.filter(b => b.status === 'Completed').reduce((sum, b) => sum + (b.serviceId?.price || 0), 0).toLocaleString()}</h3>
-                            <p className="text-[10px] text-green-200 mt-2 font-medium">Cleared and ready for withdrawal</p>
+                <>
+                    <div className="mb-12">
+                        <h2 className="text-2xl font-bold mb-4 text-gray-800">Earnings Wallet</h2>
+                        <div className="bg-gradient-to-br from-green-500 to-emerald-700 rounded-2xl shadow-xl p-6 mb-10 text-white flex flex-col md:flex-row justify-between items-center gap-6">
+                            <div className="text-center md:text-left">
+                                <p className="text-xs font-bold text-green-100 uppercase tracking-widest opacity-80">Available Balance</p>
+                                <h3 className="text-5xl font-black mt-1">₹{bookings.filter(b => b.status === 'Completed').reduce((sum, b) => sum + (b.serviceId?.price || 0), 0).toLocaleString()}</h3>
+                                <p className="text-[10px] text-green-200 mt-2 font-medium">Cleared and ready for withdrawal</p>
+                            </div>
+                            <button onClick={() => toast.info('Payout requests are processed on the 1st of every month.')} className="w-full md:w-auto bg-white text-green-700 font-black px-8 py-4 rounded-xl hover:bg-green-50 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2">
+                                <ArrowUpRight size={20} />
+                                <span>Request Payout</span>
+                            </button>
                         </div>
-                        <button onClick={() => toast.info('Payout requests are processed on the 1st of every month.')} className="w-full md:w-auto bg-white text-green-700 font-black px-8 py-4 rounded-xl hover:bg-green-50 transition-all shadow-lg active:scale-95">
-                            Request Payout
-                        </button>
-                    </div>
 
-                    <h2 className="text-2xl font-bold mb-4 text-gray-800">My Service Portfolio</h2>
-                    <div className="mb-10">
-                        {/* Desktop Table */}
-                        <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                            <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Service Title</th>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Category</th>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Price (₹)</th>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {myServices.map(service => (
-                                        <tr key={service._id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{service.serviceName}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{service.category}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-black">₹{service.price}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <button
-                                                    onClick={() => handleRemoveMyService(service._id)}
-                                                    className="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors font-bold"
-                                                >
-                                                    Remove Service
-                                                </button>
-                                            </td>
+                        <h2 className="text-2xl font-bold mb-4 text-gray-800">My Service Portfolio</h2>
+                        <div className="mb-10">
+                            {/* Desktop Table */}
+                            <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Service Title</th>
+                                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Category</th>
+                                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Price (₹)</th>
+                                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {myServices.map(service => (
+                                            <tr key={service._id} className="hover:bg-gray-50">
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{service.serviceName}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{service.category}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-black">₹{service.price}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                    <button
+                                                        onClick={() => handleRemoveMyService(service._id)}
+                                                        className="flex items-center gap-2 text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-all font-bold"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                        <span>Remove</span>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Mobile List View */}
+                            <div className="md:hidden space-y-4">
+                                {myServices.map(service => (
+                                    <div key={service._id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center">
+                                        <div>
+                                            <h4 className="font-bold text-gray-900">{service.serviceName}</h4>
+                                            <p className="text-[10px] text-blue-600 font-bold uppercase">{service.category}</p>
+                                            <p className="text-lg font-black text-gray-900 mt-1">₹{service.price}</p>
+                                        </div>
+                                        <button
+                                            onClick={() => handleRemoveMyService(service._id)}
+                                            className="bg-red-50 text-red-600 p-3 rounded-xl hover:bg-red-100 transition-colors"
+                                        >
+                                            <X size={18} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                            {myServices.length === 0 && (
+                                <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center text-gray-500">
+                                    You have not listed any services yet.
+                                </div>
+                            )}
                         </div>
 
-                        {/* Mobile List View */}
-                        <div className="md:hidden space-y-4">
-                            {myServices.map(service => (
-                                <div key={service._id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center">
-                                    <div>
-                                        <h4 className="font-bold text-gray-900">{service.serviceName}</h4>
-                                        <p className="text-[10px] text-blue-600 font-bold uppercase">{service.category}</p>
-                                        <p className="text-lg font-black text-gray-900 mt-1">₹{service.price}</p>
-                                    </div>
-                                    <button
-                                        onClick={() => handleRemoveMyService(service._id)}
-                                        className="bg-red-50 text-red-600 p-3 rounded-xl hover:bg-red-100 transition-colors"
-                                    >
-                                        <FaTimes />
-                                    </button>
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-10">
+                            <h2 className="text-xl font-bold mb-4">Add New Service</h2>
+                            <form onSubmit={handleAddService} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Service Name</label>
+                                    <input type="text" name="serviceName" required className="w-full border-2 border-gray-50 bg-gray-50 p-3 rounded-xl focus:border-blue-500 outline-none" />
                                 </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Category</label>
+                                    <select name="category" required className="w-full border-2 border-gray-50 bg-gray-50 p-3 rounded-xl focus:border-blue-500 outline-none">
+                                        <option value="">Select Category</option>
+                                        <option value="Plumbing">Plumbing</option>
+                                        <option value="Electrical">Electrical</option>
+                                        <option value="Cleaning">Cleaning</option>
+                                        <option value="Carpentry">Carpentry</option>
+                                        <option value="Painting">Painting</option>
+                                        <option value="Pest Control">Pest Control</option>
+                                        <option value="Appliance Repair">Appliance Repair</option>
+                                    </select>
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Description</label>
+                                    <textarea name="description" className="w-full border-2 border-gray-50 bg-gray-50 p-3 rounded-xl focus:border-blue-500 outline-none" rows="3"></textarea>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Price (₹)</label>
+                                    <input type="number" name="price" required className="w-full border-2 border-gray-50 bg-gray-50 p-3 rounded-xl focus:border-blue-500 outline-none" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Primary Work Location</label>
+                                    <input type="text" name="location" required className="w-full border-2 border-gray-50 bg-gray-50 p-3 rounded-xl focus:border-blue-500 outline-none" placeholder="e.g. Coimbatore center" />
+                                </div>
+                                <button type="submit" className="md:col-span-2 bg-blue-600 text-white font-black py-4 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-100 transition-all active:scale-95 flex items-center justify-center gap-2">
+                                    <PlusCircle size={20} />
+                                    <span>Create Service Listing</span>
+                                </button>
+                            </form>
+                        </div>
+
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-10 flex flex-col items-center text-center">
+                            <h2 className="text-xl font-bold mb-2">Your Provider Identity QR</h2>
+                            <div className="p-4 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 mb-4">
+                                <QRCodeSVG value={user._id} size={150} />
+                            </div>
+                            <p className="text-sm text-gray-500 max-w-xs mb-6 font-medium">Show this to customers upon arrival to start the service session.</p>
+
+                            <div className="w-full pt-6 border-t border-gray-50">
+                                <h3 className="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-4">Verification Simulation</h3>
+                                <button
+                                    onClick={() => setIsSimulating(!isSimulating)}
+                                    className={`w-full max-w-xs px-6 py-4 rounded-xl font-black shadow-lg transition-all transform active:scale-95 ${isSimulating
+                                        ? 'bg-red-50 text-red-600 border-2 border-red-100'
+                                        : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-100'
+                                        }`}
+                                >
+                                    {isSimulating ? '🛑 Stop GPS Simulation' : '🚀 Start Live GPS Simulation'}
+                                </button>
+                            </div>
+                        </div>
+
+                        <h2 className="text-2xl font-bold mb-4 text-gray-800">Job Pipeline</h2>
+                        <div className="flex space-x-2 border-b border-gray-200 mb-6">
+                            {['New Requests', 'Active Jobs', 'Past Jobs'].map((tab) => (
+                                <button
+                                    key={tab}
+                                    onClick={() => setActiveTab(tab)}
+                                    className={`py-2 px-6 text-sm font-black rounded-t-xl transition-colors relative ${activeTab === tab
+                                        ? 'text-blue-600 bg-blue-50'
+                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                                        }`}
+                                >
+                                    {tab}
+                                    {activeTab === tab && (
+                                        <motion.div
+                                            layoutId="active-tab"
+                                            className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 rounded-full"
+                                        />
+                                    )}
+                                </button>
                             ))}
                         </div>
-                        {myServices.length === 0 && (
-                            <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center text-gray-500">
-                                You have not listed any services yet.
-                            </div>
-                        )}
                     </div>
-
-                    <h2 className="text-2xl font-bold mb-4 text-gray-800">Job Pipeline</h2>
-                    <div className="flex space-x-2 border-b border-gray-200 mb-6">
-                        {['New Requests', 'Active Jobs', 'Past Jobs'].map((tab) => (
-                            <button
-                                key={tab}
-                                onClick={() => setActiveTab(tab)}
-                                className={`py-2 px-6 text-sm font-medium rounded-t-lg transition-colors relative ${activeTab === tab
-                                    ? 'text-blue-600 bg-blue-50'
-                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                                    }`}
-                            >
-                                {tab}
-                                {activeTab === tab && (
-                                    <motion.div
-                                        layoutId="active-tab"
-                                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"
-                                    />
-                                )}
-                            </button>
-                        ))}
-                    </div>
-                </div>
+                </>
             )}
 
             {user.role === 'admin' && (
                 <div className="mb-8">
                     <h2 className="text-xl font-bold mb-4">Pending Provider Approvals</h2>
                     {unapprovedProviders.length === 0 ? (
-                        <p className="text-gray-500 mb-8">No pending approvals.</p>
+                        <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center text-gray-400 font-medium mb-8">
+                            No pending approvals.
+                        </div>
                     ) : (
-                        <div className="bg-white rounded-lg shadow overflow-hidden mb-8">
-                            <ul className="divide-y divide-gray-200">
-                                {unapprovedProviders.map(provider => (
-                                    <li key={provider._id} className="px-6 py-4 flex items-center justify-between">
-                                        <div>
-                                            <p className="font-semibold">{provider.name}</p>
-                                            <p className="text-sm text-gray-500">{provider.email}</p>
-                                        </div>
-                                        <button
-                                            onClick={() => handleApproveProvider(provider._id)}
-                                            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-                                        >
-                                            Approve
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                            {unapprovedProviders.map(provider => (
+                                <div key={provider._id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+                                    <div className="mb-4">
+                                        <p className="font-black text-gray-900 leading-tight">{provider.name}</p>
+                                        <p className="text-xs text-gray-500 font-medium mt-0.5">{provider.email}</p>
+                                        <p className="text-[10px] text-blue-600 font-bold uppercase tracking-widest mt-2 px-2 py-0.5 bg-blue-50 rounded-full inline-block">Pending Review</p>
+                                    </div>
+                                    <button
+                                        onClick={() => handleApproveProvider(provider._id)}
+                                        className="w-full bg-green-600 text-white font-black py-3 rounded-xl hover:bg-green-700 shadow-lg shadow-green-100 transition-all active:scale-95"
+                                    >
+                                        Approve Provider
+                                    </button>
+                                </div>
+                            ))}
                         </div>
                     )}
 
                     <h2 className="text-xl font-bold mb-4 text-red-600">Customer Complaints</h2>
                     {complaints.length === 0 ? (
-                        <p className="text-gray-500 mb-8">No complaints logged.</p>
+                        <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center text-gray-400 font-medium mb-8">
+                            No complaints logged.
+                        </div>
                     ) : (
-                        <div className="bg-white rounded-lg shadow overflow-hidden">
-                            <ul className="divide-y divide-gray-200">
-                                {complaints.map(complaint => (
-                                    <li key={complaint._id} className="px-6 py-4">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div>
-                                                <p className="font-semibold text-red-600">Issue with Provider: {complaint.providerId?.name}</p>
-                                                <p className="text-sm text-gray-600">Reported by: {complaint.customerId?.name} | Service: {complaint.bookingId?.serviceId?.serviceName}</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                            {complaints.map(complaint => (
+                                <div key={complaint._id} className="bg-white p-6 rounded-2xl shadow-sm border border-red-50 flex flex-col">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div>
+                                            <p className="font-black text-gray-900 leading-tight">Issue: {complaint.providerId?.name}</p>
+                                            <p className="text-[10px] text-gray-400 font-bold uppercase mt-1 tracking-tight">Reported by {complaint.customerId?.name}</p>
+                                        </div>
+                                        <span className={`px-2.5 py-1 text-[10px] font-black rounded-full uppercase tracking-tighter shadow-sm ${complaint.status === 'Resolved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                            {complaint.status}
+                                        </span>
+                                    </div>
+                                    <div className="bg-red-50/50 p-4 rounded-xl border border-red-100/50 text-sm text-gray-700 mb-5 italic leading-relaxed">
+                                        "{complaint.description}"
+                                    </div>
+                                    <div className="flex flex-col gap-2 mt-auto">
+                                        {complaint.status !== 'Resolved' && (
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <button
+                                                    onClick={() => handleResolveComplaint(complaint._id, 'refund')}
+                                                    className="flex items-center justify-center gap-2 bg-purple-600 text-white py-2 text-xs font-black rounded-lg hover:bg-purple-700 shadow-md transition-all active:scale-95"
+                                                >
+                                                    <RotateCcw size={12} />
+                                                    <span>Issue Refund</span>
+                                                </button>
+                                                <button
+                                                    onClick={() => handleResolveComplaint(complaint._id, 'dismiss')}
+                                                    className="flex items-center justify-center gap-2 bg-gray-100 text-gray-600 py-2 text-xs font-black rounded-lg hover:bg-gray-200 transition-all active:scale-95"
+                                                >
+                                                    <XCircle size={12} />
+                                                    <span>Dismiss</span>
+                                                </button>
                                             </div>
-                                            <span className={`px-2 py-1 text-xs rounded ${complaint.status === 'Resolved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                                {complaint.status}
-                                            </span>
-                                        </div>
-                                        <p className="text-gray-800 bg-gray-50 p-3 rounded border text-sm mb-3">"{complaint.description}"</p>
-                                        <div className="flex gap-2">
-                                            {complaint.status !== 'Resolved' && (
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        onClick={() => handleResolveComplaint(complaint._id, 'refund')}
-                                                        className="bg-purple-600 text-white px-3 py-1 text-sm rounded hover:bg-purple-700 shadow-sm"
-                                                    >
-                                                        Issue Full Refund
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleResolveComplaint(complaint._id, 'dismiss')}
-                                                        className="bg-gray-600 text-white px-3 py-1 text-sm rounded hover:bg-gray-700 shadow-sm"
-                                                    >
-                                                        Dismiss Complaint
-                                                    </button>
-                                                </div>
-                                            )}
-                                            <button
-                                                onClick={() => setActiveChatBooking({ _id: complaint.bookingId?._id, serviceId: complaint.bookingId?.serviceId })}
-                                                className="bg-gray-200 text-gray-800 px-3 py-1 text-sm rounded hover:bg-gray-300"
-                                            >
-                                                View Chat Logs
-                                            </button>
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
+                                        )}
+                                        <button
+                                            onClick={() => setActiveChatBooking({ _id: complaint.bookingId?._id, serviceId: complaint.bookingId?.serviceId })}
+                                            className="w-full bg-blue-50 text-blue-600 py-2.5 text-xs font-black rounded-lg border border-blue-100 transition-all hover:bg-blue-100"
+                                        >
+                                            View Chat Logs & Evidence
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     )}
 
                     <h2 className="text-xl font-bold mb-4 mt-8 text-orange-600">Global System Broadcast</h2>
-                    <div className="bg-orange-50 p-6 rounded-lg shadow border border-orange-200 mb-8">
-                        <form onSubmit={handleBroadcast} className="flex gap-4">
+                    <div className="bg-orange-50 p-6 md:p-8 rounded-2xl shadow-sm border border-orange-100 mb-8">
+                        <form onSubmit={handleBroadcast} className="flex flex-col md:flex-row gap-4">
                             <input
                                 type="text"
-                                className="flex-grow border border-orange-300 rounded p-3 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                className="flex-grow border-2 border-orange-100 rounded-xl p-4 focus:outline-none focus:border-orange-500 bg-white placeholder:text-gray-300 font-medium"
                                 placeholder="Type an urgent message to broadcast to all online users..."
                                 value={broadcastMessage}
                                 onChange={(e) => setBroadcastMessage(e.target.value)}
                             />
-                            <button type="submit" className="bg-orange-600 font-bold text-white px-6 py-3 rounded hover:bg-orange-700 shadow-md whitespace-nowrap">
+                            <button type="submit" className="bg-orange-600 font-black text-white px-8 py-4 rounded-xl hover:bg-orange-700 shadow-lg shadow-orange-100 whitespace-nowrap transition-all active:scale-95 leading-none">
                                 📢 Send Broadcast
                             </button>
                         </form>
+                        <p className="text-[10px] text-orange-400 font-bold uppercase mt-3 tracking-widest text-center md:text-left">Warning: This will pop up on every active user's screen immediately.</p>
                     </div>
 
                     <h2 className="text-xl font-bold mb-4 mt-12 text-blue-800">Customers Directory</h2>
@@ -615,7 +686,10 @@ const Dashboard = () => {
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{u.email}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(u.createdAt).toLocaleDateString()}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <button onClick={() => handleDeleteUser(u._id)} className="text-red-600 hover:text-red-900 bg-red-50 px-3 py-1.5 rounded-lg font-bold">Ban Customer</button>
+                                                <button onClick={() => handleDeleteUser(u._id)} className="flex items-center gap-2 text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-xl font-black transition-all">
+                                                    <Trash2 size={14} />
+                                                    <span>Ban Customer</span>
+                                                </button>
                                             </td>
                                         </tr>
                                     ))}
@@ -657,7 +731,10 @@ const Dashboard = () => {
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{u.email}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-bold flex items-center mt-3"><span className="w-2 h-2 rounded-full bg-green-500 mr-2"></span> Active</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <button onClick={() => handleDeleteUser(u._id)} className="text-red-600 hover:text-red-900 bg-red-50 px-3 py-1.5 rounded-lg font-bold">Revoke Access</button>
+                                                <button onClick={() => handleDeleteUser(u._id)} className="flex items-center gap-2 text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-xl font-black transition-all">
+                                                    <ShieldOff size={14} />
+                                                    <span>Revoke Access</span>
+                                                </button>
                                             </td>
                                         </tr>
                                     ))}
@@ -699,7 +776,10 @@ const Dashboard = () => {
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{s.category}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-black">₹{s.price}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <button onClick={() => handleDeleteService(s._id)} className="text-red-600 hover:text-red-900 font-bold uppercase text-xs">Remove</button>
+                                                <button onClick={() => handleDeleteService(s._id)} className="flex items-center gap-2 text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-xl font-black transition-all text-xs uppercase">
+                                                    <Trash2 size={12} />
+                                                    <span>Remove</span>
+                                                </button>
                                             </td>
                                         </tr>
                                     ))}
@@ -722,69 +802,6 @@ const Dashboard = () => {
                 </div>
             )}
 
-            {user.role === 'provider' && user.isProviderApproved && (
-                <div className="mb-8">
-                    <div className="bg-white p-6 rounded-lg shadow-md mb-8 flex flex-col items-center">
-                        <h2 className="text-xl font-bold mb-4">Your Provider Identity QR</h2>
-                        <QRCodeSVG value={user._id} size={200} />
-                        <p className="mt-4 text-gray-600 mb-6">Show this to customers upon arrival to start the service.</p>
-
-                        <div className="w-full pt-6 border-t border-gray-100 flex flex-col items-center">
-                            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">Testing Tools</h3>
-                            <button
-                                onClick={() => setIsSimulating(!isSimulating)}
-                                className={`px-6 py-3 rounded-full font-bold shadow-lg transition-all transform active:scale-95 ${isSimulating
-                                    ? 'bg-red-100 text-red-600 border-2 border-red-600 hover:bg-red-200'
-                                    : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-200'
-                                    }`}
-                            >
-                                {isSimulating ? '🛑 Stop GPS Simulation' : '🚀 Start Live GPS Simulation'}
-                            </button>
-                            <p className="text-[10px] text-gray-400 mt-2 text-center max-w-[200px]">
-                                Use this to verify the Customer sees your "car" moving on their live map.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="bg-white p-6 rounded-lg shadow-md">
-                        <h2 className="text-xl font-bold mb-4">Add New Service</h2>
-                        <form onSubmit={handleAddService} className="space-y-4">
-                            <div>
-                                <label className="block text-gray-700">Service Name</label>
-                                <input type="text" name="serviceName" required className="w-full border p-2 rounded" />
-                            </div>
-                            <div>
-                                <label className="block text-gray-700">Category</label>
-                                <select name="category" required className="w-full border p-2 rounded">
-                                    <option value="">Select Category</option>
-                                    <option value="Plumbing">Plumbing</option>
-                                    <option value="Electrical">Electrical</option>
-                                    <option value="Cleaning">Cleaning</option>
-                                    <option value="Carpentry">Carpentry</option>
-                                    <option value="Painting">Painting</option>
-                                    <option value="Pest Control">Pest Control</option>
-                                    <option value="Appliance Repair">Appliance Repair</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-gray-700">Description</label>
-                                <textarea name="description" className="w-full border p-2 rounded"></textarea>
-                            </div>
-                            <div>
-                                <label className="block text-gray-700">Price (₹)</label>
-                                <input type="number" name="price" required className="w-full border p-2 rounded" />
-                            </div>
-                            <div>
-                                <label className="block text-gray-700">Location</label>
-                                <input type="text" name="location" required className="w-full border p-2 rounded" />
-                            </div>
-                            <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                                Add Service
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            )}
 
             {showScanner && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-[2000] p-4">
@@ -793,9 +810,10 @@ const Dashboard = () => {
                         <QRScanner onScan={handleScan} />
                         <button
                             onClick={() => setShowScanner(false)}
-                            className="mt-4 w-full bg-red-500 text-white py-2 rounded"
+                            className="mt-4 w-full bg-red-600 text-white py-3 rounded-xl font-black flex items-center justify-center gap-2 shadow-lg shadow-red-100 active:scale-95 transition-all"
                         >
-                            Close Scanner
+                            <X size={18} />
+                            <span>Close Scanner</span>
                         </button>
                     </div>
                 </div>
@@ -818,15 +836,16 @@ const Dashboard = () => {
                                     setShowComplaintModal(false);
                                     setComplaintText('');
                                 }}
-                                className="bg-gray-300 px-4 py-2 rounded"
+                                className="bg-gray-100 text-gray-600 px-6 py-2.5 rounded-xl font-bold hover:bg-gray-200 transition-all"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleSubmitComplaint}
-                                className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+                                className="bg-red-600 text-white px-6 py-2.5 rounded-xl font-black hover:bg-red-700 shadow-lg shadow-red-100 transition-all active:scale-95 flex items-center gap-2"
                             >
-                                Submit Complaint
+                                <AlertTriangle size={16} />
+                                <span>Submit Report</span>
                             </button>
                         </div>
                     </div>
@@ -840,65 +859,6 @@ const Dashboard = () => {
                 />
             )}
 
-            {user.role === 'provider' && user.isProviderApproved && (
-                <div className="mb-12">
-                    <h2 className="text-2xl font-bold mb-4 text-gray-800">My Service Portfolio</h2>
-                    <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100 mb-8">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Service Title</th>
-                                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Category</th>
-                                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Price (₹)</th>
-                                    <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {myServices.map(service => (
-                                    <tr key={service._id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{service.serviceName}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{service.category}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">₹{service.price}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <button
-                                                onClick={() => handleRemoveMyService(service._id)}
-                                                className="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-3 py-1 rounded transition-colors"
-                                            >
-                                                Remove Service
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                                {myServices.length === 0 && (
-                                    <tr><td colSpan="4" className="px-6 py-8 text-center text-gray-500">You have not listed any services yet. Fill out the form above to start earning!</td></tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <h2 className="text-2xl font-bold mb-4 text-gray-800">Job Pipeline</h2>
-                    <div className="flex space-x-2 border-b border-gray-200 mb-6">
-                        {['New Requests', 'Active Jobs', 'Past Jobs'].map((tab) => (
-                            <button
-                                key={tab}
-                                onClick={() => setActiveTab(tab)}
-                                className={`py-2 px-6 text-sm font-medium rounded-t-lg transition-colors relative ${activeTab === tab
-                                    ? 'text-blue-600 bg-blue-50'
-                                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                                    }`}
-                            >
-                                {tab}
-                                {activeTab === tab && (
-                                    <motion.div
-                                        layoutId="active-tab"
-                                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"
-                                    />
-                                )}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            )}
 
             {/* Dashboard Control/Header Section adjustments for mobile */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -959,11 +919,11 @@ const Dashboard = () => {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                                             {/* Actions */}
                                             {user.role === 'customer' && booking.status === 'Pending' && (
-                                                <button onClick={() => handlePay(booking._id, booking.serviceId?.price)} className="bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 shadow-md transition-all">Pay</button>
+                                                <button onClick={() => handlePay(booking._id, booking.serviceId?.price)} className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 shadow-lg shadow-green-100 transition-all font-black">Pay ₹{booking.serviceId?.price}</button>
                                             )}
                                             {user.role === 'provider' && booking.status !== 'Completed' && (
                                                 <select
-                                                    className="border p-1.5 rounded-lg bg-white text-blue-600 font-bold active:scale-95 transition-transform"
+                                                    className="border-2 border-gray-100 p-2 rounded-xl bg-white text-blue-600 font-black active:scale-95 transition-transform outline-none focus:border-blue-500 shadow-sm"
                                                     value={booking.status}
                                                     onChange={(e) => handleUpdateBookingStatus(booking._id, e.target.value)}
                                                 >
@@ -975,10 +935,36 @@ const Dashboard = () => {
                                                     <option value="Cancelled">Cancelled</option>
                                                 </select>
                                             )}
-                                            <button onClick={() => setActiveChatBooking(booking)} className="text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors font-bold">Chat</button>
-                                            {user.role === 'customer' && (booking.status === 'Paid' || booking.status === 'Completed') && (
-                                                <button onClick={() => generateInvoice(booking)} className="text-emerald-600 hover:bg-emerald-50 px-3 py-1.5 rounded-lg font-bold">Invoice</button>
-                                            )}
+
+                                            <div className="inline-flex gap-2 align-middle">
+                                                <button
+                                                    onClick={() => setActiveChatBooking(booking)}
+                                                    className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-100 transition-all font-black"
+                                                >
+                                                    <MessageSquare size={16} />
+                                                    <span>Chat</span>
+                                                </button>
+
+                                                {user.role === 'customer' && (booking.status === 'Paid' || booking.status === 'Pending') && (
+                                                    <button
+                                                        onClick={() => { setSelectedBookingId(booking._id); setShowScanner(true); }}
+                                                        className="inline-flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-xl hover:bg-purple-700 shadow-lg shadow-purple-100 transition-all font-black"
+                                                    >
+                                                        <QrCode size={16} />
+                                                        <span>Verify QR</span>
+                                                    </button>
+                                                )}
+
+                                                {(booking.status === 'Paid' || booking.status === 'Completed') && (
+                                                    <button
+                                                        onClick={() => generateInvoice(booking)}
+                                                        className="inline-flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all font-black"
+                                                    >
+                                                        <FileText size={16} />
+                                                        <span>Invoice</span>
+                                                    </button>
+                                                )}
+                                            </div>
                                         </td>
                                     </motion.tr>
                                 ))}
@@ -1036,16 +1022,18 @@ const Dashboard = () => {
                                     </div>
                                 )}
 
-                                <div className="grid grid-cols-2 gap-3 pt-2">
+                                <div className="grid grid-cols-2 gap-3 pt-4">
                                     {user.role === 'customer' && booking.status === 'Pending' && (
-                                        <button onClick={() => handlePay(booking._id, booking.serviceId?.price)} className="col-span-2 bg-green-600 text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-green-100">Pay Now (₹{booking.serviceId?.price})</button>
+                                        <button onClick={() => handlePay(booking._id, booking.serviceId?.price)} className="col-span-2 bg-green-600 text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-green-100 flex items-center justify-center gap-2">
+                                            Pay Now (₹{booking.serviceId?.price})
+                                        </button>
                                     )}
 
                                     {user.role === 'provider' && booking.status !== 'Completed' && (
                                         <div className="col-span-2">
-                                            <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Update Status</p>
+                                            <p className="text-[10px] font-bold text-gray-400 uppercase mb-1 ml-1">Update Status</p>
                                             <select
-                                                className="w-full border-2 border-gray-100 p-3 rounded-xl bg-gray-50 text-blue-700 font-bold appearance-none outline-none focus:border-blue-500"
+                                                className="w-full border-2 border-gray-100 p-4 rounded-2xl bg-gray-50 text-blue-700 font-black appearance-none outline-none focus:border-blue-500 shadow-sm"
                                                 value={booking.status}
                                                 onChange={(e) => handleUpdateBookingStatus(booking._id, e.target.value)}
                                             >
@@ -1059,25 +1047,41 @@ const Dashboard = () => {
                                         </div>
                                     )}
 
-                                    <button onClick={() => setActiveChatBooking(booking)} className="flex items-center justify-center bg-blue-50 text-blue-600 py-3 rounded-xl font-bold text-sm hover:bg-blue-100 transition-colors">
-                                        Message
+                                    <button
+                                        onClick={() => setActiveChatBooking(booking)}
+                                        className="flex items-center justify-center gap-2 bg-blue-600 text-white py-4 rounded-2xl font-black text-sm shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95"
+                                    >
+                                        <MessageSquare size={18} />
+                                        <span>Chat</span>
                                     </button>
 
-                                    {user.role === 'customer' && (booking.status === 'Paid' || booking.status === 'Completed') && (
-                                        <button onClick={() => generateInvoice(booking)} className="bg-emerald-50 text-emerald-600 py-3 rounded-xl font-bold text-sm hover:bg-emerald-100 transition-colors">
-                                            Invoice
+                                    {user.role === 'customer' && (booking.status === 'Paid' || booking.status === 'Pending') && (
+                                        <button
+                                            onClick={() => { setSelectedBookingId(booking._id); setShowScanner(true); }}
+                                            className="flex items-center justify-center gap-2 bg-purple-600 text-white py-4 rounded-2xl font-black text-sm shadow-lg shadow-purple-100 hover:bg-purple-700 transition-all active:scale-95"
+                                        >
+                                            <QrCode size={18} />
+                                            <span>Verify QR</span>
                                         </button>
                                     )}
 
-                                    {user.role === 'customer' && (booking.status === 'Paid' || booking.status === 'Pending') && (
-                                        <button onClick={() => { setSelectedBookingId(booking._id); setShowScanner(true); }} className="bg-purple-50 text-purple-600 py-3 rounded-xl font-bold text-sm hover:bg-purple-100 transition-colors">
-                                            Verify QR
+                                    {(booking.status === 'Paid' || booking.status === 'Completed') && (
+                                        <button
+                                            onClick={() => generateInvoice(booking)}
+                                            className="flex items-center justify-center gap-2 bg-emerald-600 text-white py-4 rounded-2xl font-black text-sm shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95"
+                                        >
+                                            <FileText size={18} />
+                                            <span>Invoice</span>
                                         </button>
                                     )}
 
                                     {user.role === 'customer' && (
-                                        <button onClick={() => { setSelectedBookingForComplaint(booking._id); setShowComplaintModal(true); }} className="col-span-2 text-red-500 font-bold text-xs pt-2">
-                                            Need Help? Report an Issue
+                                        <button
+                                            onClick={() => { setSelectedBookingForComplaint(booking._id); setShowComplaintModal(true); }}
+                                            className="col-span-2 flex items-center justify-center gap-2 bg-red-50 text-red-600 py-4 rounded-2xl font-black text-sm border-2 border-red-100 hover:bg-red-100 transition-all active:scale-95"
+                                        >
+                                            <AlertTriangle size={18} />
+                                            <span>Report Issue / Help</span>
                                         </button>
                                     )}
                                 </div>

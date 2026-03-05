@@ -1,7 +1,8 @@
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const generateInvoice = (booking) => {
+    console.log('[DEBUG] Generating Invoice using autoTable function...');
     const doc = new jsPDF();
 
     // Add Company Logo Text / Header
@@ -28,8 +29,6 @@ const generateInvoice = (booking) => {
 
     const customerName = booking.customerId?.name || 'Valued Customer';
     const providerName = booking.providerId?.name || 'Professional Service Provider';
-    const serviceName = booking.serviceId?.serviceName || 'Home Service';
-    const servicePrice = booking.serviceId?.price || 0;
 
     doc.text(customerName, 14, 68);
 
@@ -38,25 +37,26 @@ const generateInvoice = (booking) => {
     doc.setFont(undefined, 'normal');
     doc.text(providerName, 120, 68);
 
-    // Main Table
-    doc.autoTable({
+    // Main Table - Using standalone function for ESM compatibility
+    autoTable(doc, {
         startY: 80,
         headStyles: { fillColor: [37, 99, 235] },
         head: [['Description', 'Date Scheduled', 'Amount']],
         body: [
             [
-                serviceName,
+                booking.serviceId?.serviceName || 'Home Service',
                 `${new Date(booking.date).toLocaleDateString()} at ${booking.time}`,
-                `Rs. ${servicePrice.toLocaleString()}`
+                `Rs. ${(booking.serviceId?.price || 0).toLocaleString()}`
             ],
             ['Platform Safety & Convenience Fee', '-', 'Rs. 49'],
         ],
-        foot: [['', 'Total Amount:', `Rs. ${(servicePrice + 49).toLocaleString()}`]],
+        foot: [['', 'Total Amount:', `Rs. ${((booking.serviceId?.price || 0) + 49).toLocaleString()}`]],
         footStyles: { fillColor: [243, 244, 246], textColor: [0, 0, 0], fontStyle: 'bold' }
     });
 
-    // Footer
-    const finalY = doc.lastAutoTable.finalY || 120;
+    // Handle lastAutoTable safely (depends on plugin state)
+    const finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY) || 120;
+
     doc.setFontSize(10);
     doc.setTextColor(156, 163, 175);
     doc.text('Thank you for choosing Service At Your Home!', 14, finalY + 20);
