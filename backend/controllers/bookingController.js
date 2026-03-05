@@ -77,7 +77,7 @@ const getBookings = async (req, res) => {
                 *,
                 serviceId:service_id(id, service_name, price, category),
                 providerId:provider_id(id, name, email),
-                customerId:customer_id(id, name, email)
+                customerId:customer_id(id, name, email, phone)
             `);
 
         if (req.user.role === 'customer') {

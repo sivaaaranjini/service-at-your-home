@@ -869,6 +869,7 @@ const Dashboard = () => {
                             <tr>
                                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Service</th>
                                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date & Time</th>
+                                {user.role === 'provider' && <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Service Address</th>}
                                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Amount</th>
                                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
@@ -901,10 +902,17 @@ const Dashboard = () => {
                                                 </div>
                                             )}
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm text-gray-900 font-medium">{new Date(booking.date).toLocaleDateString()}</div>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                                            <div>{new Date(booking.date).toLocaleDateString()}</div>
                                             <div className="text-xs text-gray-500">{booking.time}</div>
                                         </td>
+                                        {user.role === 'provider' && (
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="text-sm font-bold text-blue-600 max-w-[200px] truncate" title={booking.customerId?.phone || 'No address provided'}>
+                                                    {booking.customerId?.phone || 'No address provided'}
+                                                </div>
+                                            </td>
+                                        )}
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className={`px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full shadow-sm
                                                 ${booking.status === 'Completed' ? 'bg-green-100 text-green-800' :
@@ -1012,6 +1020,15 @@ const Dashboard = () => {
                                         <span className="font-black text-gray-900 text-lg">₹{booking.serviceId?.price}</span>
                                     </div>
                                 </div>
+
+                                {user.role === 'provider' && (
+                                    <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100/50">
+                                        <span className="text-[10px] text-blue-400 font-bold uppercase block mb-1">Service Address</span>
+                                        <span className="text-sm font-bold text-blue-800 leading-tight">
+                                            {booking.customerId?.phone || 'No address provided'}
+                                        </span>
+                                    </div>
+                                )}
 
                                 {booking.status === 'OnTheWay' && user.role === 'customer' && (
                                     <div className="rounded-xl overflow-hidden shadow-sm border border-gray-200">
