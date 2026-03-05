@@ -46,13 +46,17 @@ const registerUser = async (req, res) => {
         // 5. Send OTP Email
         const message = `Your verification code is ${otp}. Valid for 10 minutes.`;
 
-        // Execute email sending in background to prevent SMTP hanging on Render IPs
-        // Execute email sending in background to prevent SMTP hanging on Render IPs
-        sendEmail({
-            email: email,
-            subject: 'Account Verification OTP',
-            message,
-        }).catch(err => console.error("SMTP Error:", err.message));
+        // Execute email sending
+        try {
+            await sendEmail({
+                email: email,
+                subject: 'Account Verification OTP',
+                message,
+            });
+        } catch (error) {
+            console.error("Email Error:", error.message);
+            return res.status(500).json({ message: 'User created but OTP email failed. Please check your Brevo SMTP key.' });
+        }
 
         res.status(201).json({
             email: email,
