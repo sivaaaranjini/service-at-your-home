@@ -77,8 +77,8 @@ const ChatModal = ({ booking, onClose }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-            <div className="bg-white rounded-lg w-full max-w-md h-[500px] flex flex-col shadow-xl overflow-hidden relative">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-[1000] p-4">
+            <div className="bg-white rounded-2xl w-full max-w-md h-[80vh] md:h-[600px] flex flex-col shadow-2xl overflow-hidden relative border border-gray-100">
 
                 {/* Header */}
                 <div className="bg-blue-600 text-white p-4 flex justify-between items-center shadow-md z-10">
