@@ -979,6 +979,16 @@ const Dashboard = () => {
                                                         <span>Invoice</span>
                                                     </button>
                                                 )}
+
+                                                {user.role === 'customer' && (
+                                                    <button
+                                                        onClick={() => { setSelectedBookingForComplaint(booking._id); setShowComplaintModal(true); }}
+                                                        className="inline-flex items-center gap-2 bg-red-50 text-red-600 px-4 py-2 rounded-xl hover:bg-red-100 transition-all font-black border border-red-100"
+                                                    >
+                                                        <AlertTriangle size={16} />
+                                                        <span>Report</span>
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </motion.tr>
