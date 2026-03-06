@@ -1,0 +1,15 @@
+
+C:\Users\ELCOT\Downloads\sivaa\ServiceAtYourHome\MERN_Stack_App\frontend\src\components\ChatModal.jsx
+  74:18  error  'error' is defined but never used  no-unused-vars
+
+C:\Users\ELCOT\Downloads\sivaa\ServiceAtYourHome\MERN_Stack_App\frontend\src\components\LiveTrackingMap.jsx
+  12:16  error  'markerShadow' is not defined  no-undef
+
+C:\Users\ELCOT\Downloads\sivaa\ServiceAtYourHome\MERN_Stack_App\frontend\src\pages\Dashboard.jsx
+  169:8  warning  React Hook useEffect has missing dependencies: 'fetchAllUsers', 'fetchBookings', 'fetchComplaints', 'fetchMyServices', and 'fetchUnapprovedProviders'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\ELCOT\Downloads\sivaa\ServiceAtYourHome\MERN_Stack_App\frontend\src\pages\Services.jsx
+  15:11  warning  The 'fetchServices' function makes the dependencies of useEffect Hook (at line 13) change on every render. To fix this, wrap the definition of 'fetchServices' in its own useCallback() Hook  react-hooks/exhaustive-deps
+
+✖ 4 problems (2 errors, 2 warnings)
+

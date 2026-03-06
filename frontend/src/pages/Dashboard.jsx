@@ -8,7 +8,7 @@ import ChatModal from '../components/ChatModal';
 import AnalyticsCharts from '../components/AnalyticsCharts';
 import LiveTrackingMap from '../components/LiveTrackingMap';
 import generateInvoice from '../utils/generateInvoice';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import socket from '../utils/socket';
 import { MessageSquare, QrCode, AlertTriangle, FileText, Trash2, ShieldOff, PlusCircle, ArrowUpRight, Wallet, X, RotateCcw, XCircle } from 'lucide-react';
 
@@ -115,7 +115,7 @@ const Dashboard = () => {
                             });
                             step++;
                         }, 2000);
-                    }, (err) => {
+                    }, () => {
                         // Fallback if GPS denied: Use a city in India (e.g. Coimbatore center)
                         const baseLat = 11.0168;
                         const baseLng = 76.9558;
@@ -166,6 +166,7 @@ const Dashboard = () => {
                 fetchMyServices();
             }
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user]);
 
     const fetchMyServices = async () => {
@@ -197,6 +198,7 @@ const Dashboard = () => {
             toast.success('Provider approved');
             fetchUnapprovedProviders();
         } catch (error) {
+            console.error(error);
             toast.error('Approval failed');
         }
     };
@@ -207,7 +209,7 @@ const Dashboard = () => {
             const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/complaints`, config);
             setComplaints(res.data);
         } catch (error) {
-            console.error('Failed to fetch complaints');
+            console.error('Failed to fetch complaints', error);
         }
     };
 
@@ -239,6 +241,7 @@ const Dashboard = () => {
             fetchAllUsers();
             fetchUnapprovedProviders(); // Refresh pending list just in case
         } catch (error) {
+            console.error(error);
             toast.error('Failed to delete user');
         }
     };
@@ -251,6 +254,7 @@ const Dashboard = () => {
             toast.success('Service removed from platform');
             fetchAllServices();
         } catch (error) {
+            console.error(error);
             toast.error('Failed to delete service');
         }
     };
@@ -279,6 +283,7 @@ const Dashboard = () => {
             toast.success('Service successfully removed');
             fetchMyServices();
         } catch (error) {
+            console.error(error);
             toast.error('Failed to remove service');
         }
     };
@@ -290,6 +295,7 @@ const Dashboard = () => {
             toast.success(`Complaint successfully resolved (${action})`);
             fetchComplaints();
         } catch (error) {
+            console.error(error);
             toast.error('Failed to resolve complaint');
         }
     };
@@ -373,6 +379,7 @@ const Dashboard = () => {
             // For now, let's just alert "Payment Integration Ready".
             // To test, user needs valid keys.
         } catch (error) {
+            console.error(error);
             // toast.error('Payment failed');
         }
     };

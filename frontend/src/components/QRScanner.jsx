@@ -21,17 +21,17 @@ const QRScanner = ({ onScan }) => {
             scanner.clear();
         }
 
-        function onScanFailure(error) {
+        function onScanFailure() {
             // handle scan failure, usually better to ignore and keep scanning.
             // console.warn(`Code scan error = ${error}`);
         }
 
         return () => {
-            scanner.clear().catch(error => {
-                console.error("Failed to clear html5-qrcode scanner. ", error);
+            scanner.clear().catch(() => {
+                console.error("Scanner clear failed");
             });
         };
-    }, []);
+    }, [onScan]);
 
     return (
         <div className="w-full max-w-sm mx-auto">

@@ -10,8 +10,9 @@ const Services = () => {
 
     useEffect(() => {
         fetchServices();
-    }, [category]); // Fetch when category changes
+    }, [category, fetchServices]); // Fetch when category changes
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     const fetchServices = async () => {
         setLoading(true);
         try {

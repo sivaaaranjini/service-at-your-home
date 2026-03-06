@@ -71,7 +71,8 @@ const ChatModal = ({ booking, onClose }) => {
                 text: messageData.text
             }, config);
 
-        } catch (error) {
+        } catch (err) {
+            console.error(err);
             toast.error('Failed to send message');
         }
     };
