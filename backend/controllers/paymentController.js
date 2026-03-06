@@ -1,5 +1,6 @@
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
+const supabase = require('../config/supabaseClient');
 // Removed direct instantiation
 // Initialize Razorpay dynamically per function to allow process.env to load properly
 

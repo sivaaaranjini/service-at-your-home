@@ -15,19 +15,22 @@ const allowedOrigins = process.env.CLIENT_URL ? process.env.CLIENT_URL.split(','
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
+        origin: ["https://service-at-your-home-mu.vercel.app", "http://localhost:5173"],
+        methods: ["GET", "POST", "PUT", "DELETE"],
+        credentials: true
     }
 });
 
 // Middleware
 app.use(express.json());
-app.use(cors({
-    origin: function (origin, callback) {
-        callback(null, true);
-    },
-    credentials: true
-}));
+const corsOptions = {
+    origin: ["https://service-at-your-home-mu.vercel.app", "http://localhost:5173"],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+};
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Enable pre-flight across-the-board
 
 app.use((req, res, next) => {
     console.log(`[TRAFFIC] ${req.method} ${req.url}`);
