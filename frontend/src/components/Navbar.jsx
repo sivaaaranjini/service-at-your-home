@@ -23,7 +23,8 @@ const Navbar = () => {
             {
                 name: user.role === 'provider' ? 'Dashboard' : user.role === 'admin' ? 'Admin Panel' : 'My Bookings',
                 path: `/${user.role}/dashboard`
-            }
+            },
+            { name: 'Profile', path: '/profile' }
         ] : [
             { name: 'Login', path: '/login' },
             { name: 'Register', path: '/register', isButton: true }

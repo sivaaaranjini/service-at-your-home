@@ -12,6 +12,7 @@ import ServiceDetails from './pages/ServiceDetails';
 import VerifyOtp from './pages/VerifyOtp';
 import Services from './pages/Services';
 import Dashboard from './pages/Dashboard';
+import Profile from './pages/Profile';
 import { useEffect } from 'react';
 import socket from './utils/socket';
 
@@ -44,6 +45,7 @@ function App() {
               <Route path="/verify-otp" element={<VerifyOtp />} />
               <Route path="/services" element={<Services />} />
               <Route path="/services/:id" element={<ServiceDetails />} />
+              <Route path="/profile" element={<Profile />} />
               <Route path="/customer/dashboard" element={<Dashboard />} />
               <Route path="/provider/dashboard" element={<Dashboard />} />
               <Route path="/admin/dashboard" element={<Dashboard />} />
