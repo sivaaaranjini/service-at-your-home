@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
 import {
     Chart as ChartJS,

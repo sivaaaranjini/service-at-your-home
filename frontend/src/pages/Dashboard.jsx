@@ -8,7 +8,7 @@ import ChatModal from '../components/ChatModal';
 import AnalyticsCharts from '../components/AnalyticsCharts';
 import LiveTrackingMap from '../components/LiveTrackingMap';
 import generateInvoice from '../utils/generateInvoice';
-import { AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import socket from '../utils/socket';
 import { MessageSquare, QrCode, AlertTriangle, FileText, Trash2, ShieldOff, PlusCircle, ArrowUpRight, Wallet, X, RotateCcw, XCircle } from 'lucide-react';
 
