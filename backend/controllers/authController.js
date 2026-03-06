@@ -130,6 +130,7 @@ const verifyOtp = async (req, res) => {
             email: newUser.email,
             role: newUser.role,
             isProviderApproved: newUser.is_provider_approved,
+            address: newUser.phone,
             token: generateToken(newUser.id),
             message: 'Account verified and created successfully',
         });
@@ -167,6 +168,7 @@ const loginUser = async (req, res) => {
                 email: user.email,
                 role: user.role,
                 isProviderApproved: user.is_provider_approved,
+                address: user.phone,
                 token: generateToken(user.id),
             });
         } else {
@@ -177,29 +179,37 @@ const loginUser = async (req, res) => {
     }
 };
 
-// @desc    Get top rated providers for home page
-// @route   GET /api/auth/top-providers
-// @access  Public
-const getTopProviders = async (req, res) => {
+// @desc    Update user profile
+// @route   PUT /api/auth/profile
+// @access  Private
+const updateProfile = async (req, res) => {
     try {
-        const { data: providers, error } = await supabase
+        const { name, address } = req.body;
+
+        const { data: updatedUser, error } = await supabase
             .from('users')
-            .select('id, name, email, role')
-            .eq('role', 'provider')
-            .eq('is_provider_approved', true)
-            .limit(3);
+            .update({
+                name: name || undefined,
+                phone: address || undefined,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', req.user._id)
+            .select()
+            .single();
 
         if (error) throw error;
 
-        // Ensure frontend gets _id back
-        const mappedProviders = providers.map(p => ({
-            ...p,
-            _id: p.id
-        }));
-
-        res.json(mappedProviders);
+        res.json({
+            _id: updatedUser.id,
+            name: updatedUser.name,
+            email: updatedUser.email,
+            role: updatedUser.role,
+            isProviderApproved: updatedUser.is_provider_approved,
+            address: updatedUser.phone,
+            token: generateToken(updatedUser.id), // Return new token just in case
+        });
     } catch (error) {
-        res.status(500).json({ message: 'Failed to fetch top providers' });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -208,4 +218,5 @@ module.exports = {
     verifyOtp,
     loginUser,
     getTopProviders,
+    updateProfile,
 };

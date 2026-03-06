@@ -5,7 +5,7 @@ const sendEmail = require('../utils/sendEmail');
 // @route   POST /api/bookings
 // @access  Private (Customer)
 const createBooking = async (req, res) => {
-    const { serviceId, date, time } = req.body;
+    const { serviceId, date, time, address } = req.body;
 
     try {
         // 1. Get Service to find Provider
@@ -28,6 +28,7 @@ const createBooking = async (req, res) => {
                 service_id: serviceId,
                 date,
                 time,
+                address,
                 status: 'Pending',
                 payment_status: 'Pending'
             }])

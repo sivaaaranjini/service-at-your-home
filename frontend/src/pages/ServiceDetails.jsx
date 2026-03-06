@@ -12,6 +12,13 @@ const ServiceDetails = () => {
     const [loading, setLoading] = useState(true);
     const [date, setDate] = useState('');
     const [time, setTime] = useState('');
+    const [address, setAddress] = useState(user?.address || '');
+
+    useEffect(() => {
+        if (user?.address && !address) {
+            setAddress(user.address);
+        }
+    }, [user, address]);
 
     useEffect(() => {
         const fetchService = async () => {
@@ -20,7 +27,6 @@ const ServiceDetails = () => {
                 setService(res.data);
             } catch (error) {
                 console.error(error);
-                // toast.error('Could not load service details');
             } finally {
                 setLoading(false);
             }
@@ -40,16 +46,15 @@ const ServiceDetails = () => {
         try {
             const config = {
                 headers: {
-                    Authorization: `Bearer ${user.token}`, // user object needs token? 
-                    // user context usually has token if login returned it.
-                    // My login logic: setUser(res.data) -> res.data has token.
+                    Authorization: `Bearer ${user.token}`,
                 }
             };
 
             await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/bookings`, {
                 serviceId: id,
                 date,
-                time
+                time,
+                address
             }, config);
 
             toast.success('Booking created successfully! Please pay to confirm.');
@@ -95,6 +100,18 @@ const ServiceDetails = () => {
                             value={time}
                             onChange={(e) => setTime(e.target.value)}
                         />
+                    </div>
+                    <div>
+                        <label className="block text-gray-700 mb-1">Service Address</label>
+                        <textarea
+                            required
+                            rows="2"
+                            className="w-full px-3 py-2 border rounded focus:outline-none focus:border-blue-500"
+                            placeholder="Enter the full address for the service..."
+                            value={address}
+                            onChange={(e) => setAddress(e.target.value)}
+                        />
+                        <p className="text-[10px] text-gray-400 mt-1 italic">Default address loaded from your profile.</p>
                     </div>
                     <button
                         type="submit"
