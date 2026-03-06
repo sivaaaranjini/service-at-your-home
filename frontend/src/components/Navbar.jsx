@@ -23,8 +23,7 @@ const Navbar = () => {
             {
                 name: user.role === 'provider' ? 'Dashboard' : user.role === 'admin' ? 'Admin Panel' : 'My Bookings',
                 path: `/${user.role}/dashboard`
-            },
-            { name: 'Profile', path: '/profile' }
+            }
         ] : [
             { name: 'Login', path: '/login' },
             { name: 'Register', path: '/register', isButton: true }
@@ -57,10 +56,10 @@ const Navbar = () => {
                         ))}
                         {user && (
                             <div className="flex items-center gap-4 pl-4 border-l">
-                                <div className="flex items-center text-gray-700 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
-                                    <FaUserCircle className="mr-2 text-blue-500" />
+                                <Link to="/profile" className="flex items-center text-gray-700 hover:text-blue-600 transition-colors bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100 group">
+                                    <FaUserCircle className="mr-2 text-blue-500 group-hover:text-blue-600 transition-colors" />
                                     <span className="text-sm font-semibold truncate max-w-[100px]">{user.name}</span>
-                                </div>
+                                </Link>
                                 <button
                                     onClick={handleLogout}
                                     className="text-sm font-bold text-red-500 hover:text-red-700 transition"
@@ -94,13 +93,13 @@ const Navbar = () => {
                     >
                         <div className="px-4 pt-2 pb-6 space-y-2">
                             {user && (
-                                <div className="flex items-center p-3 mb-4 bg-blue-50 rounded-xl">
+                                <Link to="/profile" onClick={() => setIsOpen(false)} className="flex items-center p-3 mb-4 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors">
                                     <FaUserCircle className="text-blue-600 mr-3" size={30} />
                                     <div>
                                         <p className="font-bold text-gray-900">{user.name}</p>
                                         <p className="text-xs text-blue-600 capitalize">{user.role}</p>
                                     </div>
-                                </div>
+                                </Link>
                             )}
                             {navLinks.map((link) => (
                                 <Link
