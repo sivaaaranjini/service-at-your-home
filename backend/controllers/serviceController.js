@@ -7,52 +7,61 @@ const getServices = async (req, res) => {
     console.log("[DEBUG getServices] Route hit...");
     try {
         const { category, search } = req.query;
-        console.log("[DEBUG getServices] Building query...");
+        console.log("[DEBUG getServices] Building query...", { category, search });
 
         let query = supabase
             .from('services')
-            .select('*');
+            .select(`
+                *,
+                providerId:provider_id(id, name, email, is_provider_approved)
+            `);
+
+        if (category) {
+            query = query.eq('category', category);
+        }
 
         if (search) {
             query = query.or(`service_name.ilike.%${search}%,description.ilike.%${search}%`);
         }
-        query.then(({ data: services, error }) => {
-            if (error) {
-                return res.status(500).json({ message: error.message });
-            }
 
-            // Map `id` back to `_id` so frontend doesn't break
-            const mappedServices = services ? services.map(s => {
-                // Safely map the provider info since we strictly joined it
-                let providerInfo = null;
-                if (s.providerId && !Array.isArray(s.providerId)) {
+        const { data: services, error } = await query;
+        console.log("[DEBUG getServices] Supabase raw result:", {
+            count: services?.length,
+            hasError: !!error,
+            firstItemKeys: services?.[0] ? Object.keys(services[0]) : 'N/A'
+        });
+
+        if (error) {
+            console.error("[DEBUG getServices] Supabase error:", error);
+            return res.status(500).json({ message: error.message });
+        }
+
+        // Map `id` back to `_id` so frontend doesn't break
+        const mappedServices = services ? services.map(s => {
+            // Safely handle providerId which might be an object or an array of 1 object
+            let providerInfo = null;
+            if (s.providerId) {
+                const rawProvider = Array.isArray(s.providerId) ? s.providerId[0] : s.providerId;
+                if (rawProvider) {
                     providerInfo = {
-                        ...s.providerId,
-                        _id: s.providerId.id,
-                        isProviderApproved: s.providerId.is_provider_approved
-                    };
-                } else if (Array.isArray(s.providerId) && s.providerId.length > 0) {
-                    // Supabase sometimes returns joins as arrays depending on schema assumptions
-                    providerInfo = {
-                        ...s.providerId[0],
-                        _id: s.providerId[0].id,
-                        isProviderApproved: s.providerId[0].is_provider_approved
+                        ...rawProvider,
+                        _id: rawProvider.id
                     };
                 }
+            }
 
-                return {
-                    ...s,
-                    _id: s.id,
-                    providerId: providerInfo
-                };
-            }) : [];
+            return {
+                ...s,
+                _id: s.id,
+                serviceName: s.service_name,
+                providerId: providerInfo
+            };
+        }) : [];
 
-            return res.json(mappedServices);
-        }).catch(fatalErr => {
-            console.error("[getServices] FATAL PROMISE CATCH:", fatalErr);
-            return res.status(500).json({ message: "Query Promise rejected." });
-        });
+        console.log(`[DEBUG getServices] Returning ${mappedServices.length} services`);
+        return res.json(mappedServices);
     } catch (error) {
+        console.error("[DEBUG getServices] Catch block error:", error);
         res.status(500).json({ message: error.message });
     }
 };

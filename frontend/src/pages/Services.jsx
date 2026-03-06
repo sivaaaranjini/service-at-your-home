@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 import ServiceCard from '../components/ServiceCard';
 
 const Services = () => {
@@ -7,37 +8,51 @@ const Services = () => {
     const [loading, setLoading] = useState(true);
     const [category, setCategory] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
+    const [finalSearchTerm, setFinalSearchTerm] = useState('');
 
-    useEffect(() => {
-        fetchServices();
-    }, [category, fetchServices]); // Fetch when category changes
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    const fetchServices = async () => {
+    const fetchServices = useCallback(async () => {
+        console.log("[DEBUG Services] fetchServices starting...");
         setLoading(true);
         try {
-            let url = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services`;
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+            console.log("[DEBUG Services] URL:", `${apiUrl}/api/services`);
+            let url = `${apiUrl}/api/services`;
             const params = {};
             if (category) params.category = category;
-            if (searchTerm) params.search = searchTerm;
+            if (finalSearchTerm) params.search = finalSearchTerm;
 
             const res = await axios.get(url, { params });
-            setServices(res.data);
+            console.log("[DEBUG Services] response received:", res.data);
+            if (Array.isArray(res.data)) {
+                setServices(res.data);
+            } else {
+                console.error("[DEBUG Services] data is not an array:", res.data);
+                setServices([]);
+            }
         } catch (error) {
-            console.error(error);
+            console.error("[DEBUG Services] error:", error);
+            toast.error(error.response?.data?.message || "Failed to load services. Check your connection.");
         } finally {
             setLoading(false);
         }
-    };
+    }, [category, finalSearchTerm]);
+
+    useEffect(() => {
+        fetchServices();
+    }, [fetchServices]);
+
+    useEffect(() => {
+        console.log("[DEBUG Services] Current services state:", services);
+    }, [services]);
 
     const handleSearch = (e) => {
         e.preventDefault();
-        fetchServices();
+        setFinalSearchTerm(searchTerm);
     };
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-8">
-            <h1 className="text-3xl font-bold mb-8">Files Services</h1>
+            <h1 className="text-3xl font-bold mb-8">Available Services</h1>
 
             {/* Filters */}
             <div className="flex flex-col md:flex-row gap-4 mb-8">
@@ -69,9 +84,15 @@ const Services = () => {
                 <p className="text-center">Loading services...</p>
             ) : services.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {services.map((service) => (
-                        <ServiceCard key={service._id} service={service} />
-                    ))}
+                    {services.map((service, idx) => {
+                        try {
+                            if (!service) return null;
+                            return <ServiceCard key={service?._id || service?.id || idx} service={service} />;
+                        } catch (err) {
+                            console.error("[DEBUG Services] Error rendering ServiceCard:", err, "Service data:", service);
+                            return null;
+                        }
+                    })}
                 </div>
             ) : (
                 <p className="text-center text-gray-500">No services found.</p>

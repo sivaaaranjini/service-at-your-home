@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const Navbar = () => {
     const { user, logout } = useContext(AuthContext);
     const [isOpen, setIsOpen] = useState(false);
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
     const navigate = useNavigate();
 
     const handleLogout = () => {
@@ -55,17 +56,48 @@ const Navbar = () => {
                             </Link>
                         ))}
                         {user && (
-                            <div className="flex items-center gap-4 pl-4 border-l">
-                                <Link to="/profile" className="flex items-center text-gray-700 hover:text-blue-600 transition-colors bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100 group">
-                                    <FaUserCircle className="mr-2 text-blue-500 group-hover:text-blue-600 transition-colors" />
-                                    <span className="text-sm font-semibold truncate max-w-[100px]">{user.name}</span>
-                                </Link>
-                                <button
-                                    onClick={handleLogout}
-                                    className="text-sm font-bold text-red-500 hover:text-red-700 transition"
-                                >
-                                    Logout
-                                </button>
+                            <div className="flex items-center gap-4 pl-4 border-l relative">
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setIsProfileOpen(!isProfileOpen)}
+                                        className="flex items-center text-gray-700 hover:text-blue-600 transition-colors bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100 group"
+                                    >
+                                        <FaUserCircle className="mr-2 text-blue-500 group-hover:text-blue-600 transition-colors" />
+                                        <span className="text-sm font-semibold truncate max-w-[100px]">{user.name}</span>
+                                    </button>
+
+                                    <AnimatePresence>
+                                        {isProfileOpen && (
+                                            <motion.div
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, y: 10 }}
+                                                className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-[1100]"
+                                            >
+                                                <div className="px-4 py-2 border-b border-gray-50 mb-1">
+                                                    <p className="text-xs font-bold text-gray-400 uppercase">Signed in as</p>
+                                                    <p className="text-sm font-bold text-gray-900 truncate">{user.email}</p>
+                                                </div>
+                                                <Link
+                                                    to="/profile"
+                                                    onClick={() => setIsProfileOpen(false)}
+                                                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 font-medium"
+                                                >
+                                                    View Profile
+                                                </Link>
+                                                <button
+                                                    onClick={() => {
+                                                        handleLogout();
+                                                        setIsProfileOpen(false);
+                                                    }}
+                                                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-bold"
+                                                >
+                                                    Log Out
+                                                </button>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
                             </div>
                         )}
                     </div>

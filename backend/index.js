@@ -10,12 +10,12 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Allow CORS from multiple origins if specified as comma-separated in .env, otherwise default to single string
-const allowedOrigins = process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',') : ['http://localhost:5173'];
+const allowedOrigins = process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',') : ['http://localhost:5173', 'http://127.0.0.1:5173'];
 
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: ["https://service-at-your-home-mu.vercel.app", "http://localhost:5173"],
+        origin: ["https://service-at-your-home-mu.vercel.app", "http://localhost:5173", "http://127.0.0.1:5173"],
         methods: ["GET", "POST", "PUT", "DELETE"],
         credentials: true
     }
@@ -24,7 +24,7 @@ const io = new Server(server, {
 // Middleware
 app.use(express.json());
 const corsOptions = {
-    origin: ["https://service-at-your-home-mu.vercel.app", "http://localhost:5173"],
+    origin: ["https://service-at-your-home-mu.vercel.app", "http://localhost:5173", "http://127.0.0.1:5173"],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"]
