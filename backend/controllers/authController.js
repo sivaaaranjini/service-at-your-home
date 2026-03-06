@@ -213,6 +213,35 @@ const updateProfile = async (req, res) => {
     }
 };
 
+// @desc    Get top rated approved providers
+// @route   GET /api/auth/top-providers
+// @access  Public
+const getTopProviders = async (req, res) => {
+    try {
+        const { data: providers, error } = await supabase
+            .from('users')
+            .select('id, name, email, phone, is_provider_approved')
+            .eq('role', 'provider')
+            .eq('is_provider_approved', true)
+            .limit(5);
+
+        if (error) throw error;
+
+        // Map to frontend expected keys if needed
+        const mappedProviders = providers.map(p => ({
+            _id: p.id,
+            name: p.name,
+            email: p.email,
+            address: p.phone,
+            isProviderApproved: p.is_provider_approved
+        }));
+
+        res.json(mappedProviders);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     registerUser,
     verifyOtp,
