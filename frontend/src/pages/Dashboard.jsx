@@ -1,17 +1,17 @@
 import { useState, useEffect, useContext } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import AuthContext from '../context/AuthContext';
 import { toast } from 'react-toastify';
+import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import QRScanner from '../components/QRScanner';
-import ChatModal from '../components/ChatModal';
 import AnalyticsCharts from '../components/AnalyticsCharts';
 import LiveTrackingMap from '../components/LiveTrackingMap';
 import generateInvoice from '../utils/generateInvoice';
 import socket from '../utils/socket';
-import { MessageSquare, QrCode, AlertTriangle, FileText, Trash2, ShieldOff, PlusCircle, ArrowUpRight, Wallet, X, RotateCcw, XCircle } from 'lucide-react';
+import { MessageSquare, QrCode, AlertTriangle, FileText, Trash2, ShieldOff, PlusCircle, ArrowUpRight, Wallet, X, RotateCcw, XCircle, Star } from 'lucide-react';
 import ReviewsList from '../components/ReviewsList';
+import ChatModal from '../components/ChatModal';
 
 const Dashboard = () => {
     const { user } = useContext(AuthContext);
@@ -19,419 +19,215 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [showScanner, setShowScanner] = useState(false);
     const [selectedBookingId, setSelectedBookingId] = useState(null);
-
-    // Admin States
     const [unapprovedProviders, setUnapprovedProviders] = useState([]);
     const [allUsers, setAllUsers] = useState([]);
     const [allServices, setAllServices] = useState([]);
-
-    // Provider States
     const [myServices, setMyServices] = useState([]);
-
-    // Complaint States
     const [complaints, setComplaints] = useState([]);
     const [showComplaintModal, setShowComplaintModal] = useState(false);
     const [complaintText, setComplaintText] = useState('');
     const [selectedBookingForComplaint, setSelectedBookingForComplaint] = useState(null);
-
-    // Broadcast State
     const [broadcastMessage, setBroadcastMessage] = useState('');
-
-    // Chat States
     const [activeChatBooking, setActiveChatBooking] = useState(null);
-
-    // Live Tracking State
-    const [liveLocations, setLiveLocations] = useState({}); // { bookingId: { lat, lng } }
-
-    // Provider Pipeline Tab State
+    const [liveLocations, setLiveLocations] = useState({});
     const [activeTab, setActiveTab] = useState('New Requests');
-
-    // Review States
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [selectedBookingForReview, setSelectedBookingForReview] = useState(null);
     const [rating, setRating] = useState(5);
     const [reviewComment, setReviewComment] = useState('');
+    const [isSimulating, setIsSimulating] = useState(false);
 
-    // Socket.io Listeners for Live Tracking
     useEffect(() => {
         socket.on('receive_location', (data) => {
-            console.log('[SOCKET] Received Live Location Update:', data);
-            setLiveLocations(prev => ({
-                ...prev,
-                [data.bookingId]: { lat: data.lat, lng: data.lng }
-            }));
+            setLiveLocations(prev => ({ ...prev, [data.bookingId]: { lat: data.lat, lng: data.lng } }));
         });
-
-        return () => {
-            socket.off('receive_location');
-        };
+        return () => { socket.off('receive_location'); };
     }, []);
 
-    // Join Rooms for Active Bookings
     useEffect(() => {
         const joinActiveRooms = () => {
             if (user && bookings.length > 0) {
                 const activeStatuses = ['Accepted', 'OnTheWay', 'In Progress', 'Paid'];
-                bookings.forEach(booking => {
-                    if (activeStatuses.includes(booking.status)) {
-                        socket.emit('join_room', booking._id);
-                        console.log(`[SOCKET] Joining room for booking: ${booking._id}`);
-                    }
-                });
+                bookings.forEach(booking => { if (activeStatuses.includes(booking.status)) socket.emit('join_room', booking._id); });
             }
         };
-
         joinActiveRooms();
-
-        // Also rejoin on reconnect
         socket.on('connect', joinActiveRooms);
-        return () => {
-            socket.off('connect', joinActiveRooms);
-        };
+        return () => { socket.off('connect', joinActiveRooms); };
     }, [bookings, user]);
 
-    // Provider Geolocation Emitter
-    const [isSimulating, setIsSimulating] = useState(false);
     useEffect(() => {
         let watchId;
         let simInterval;
-
         if (user?.role === 'provider' && user?.isProviderApproved) {
             const activeTrips = bookings.filter(b => b.status === 'OnTheWay');
-
             if (activeTrips.length > 0) {
                 if (isSimulating) {
-                    console.log("[GPS] Starting Simulation...");
-                    // Try to get CURRENT location as base for simulation
                     navigator.geolocation.getCurrentPosition((pos) => {
                         const baseLat = pos.coords.latitude;
                         const baseLng = pos.coords.longitude;
                         let step = 0;
-
-                        simInterval = setInterval(() => {
-                            // Move speed: ~100m per 3 seconds
-                            const lat = baseLat + (step * 0.0005);
-                            const lng = baseLng + (step * 0.0005);
-                            
-                            toast(`📡 Broadcasting GPS... (Step ${step})`, { id: 'gps-ping' });
-
-                            activeTrips.forEach(trip => {
-                                socket.emit('update_location', {
-                                    bookingId: trip._id,
-                                    lat: lat,
-                                    lng: lng
-                                });
-                            });
-                            step++;
-                        }, 3000);
-                    }, () => {
-                        // Fallback if GPS denied: Use a city in India (e.g. Coimbatore center)
-                        const baseLat = 11.0168;
-                        const baseLng = 76.9558;
-                        let step = 0;
                         simInterval = setInterval(() => {
                             const lat = baseLat + (step * 0.0005);
                             const lng = baseLng + (step * 0.0005);
-                            toast(`📡 Broadcasting GPS... (Step ${step})`, { id: 'gps-ping' });
-                            activeTrips.forEach(trip => {
-                                socket.emit('update_location', { bookingId: trip._id, lat, lng });
-                            });
+                            activeTrips.forEach(trip => { socket.emit('update_location', { bookingId: trip._id, lat, lng }); });
                             step++;
                         }, 3000);
                     });
                 } else if ('geolocation' in navigator) {
-                    watchId = navigator.geolocation.watchPosition(
-                        (position) => {
-                            const { latitude, longitude } = position.coords;
-                            activeTrips.forEach(trip => {
-                                socket.emit('update_location', {
-                                    bookingId: trip._id,
-                                    lat: latitude,
-                                    lng: longitude
-                                });
-                            });
-                        },
-                        (error) => console.error("Error obtaining location", error),
-                        { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
-                    );
+                    watchId = navigator.geolocation.watchPosition((p) => {
+                        activeTrips.forEach(trip => { socket.emit('update_location', { bookingId: trip._id, lat: p.coords.latitude, lng: p.coords.longitude }); });
+                    });
                 }
             }
         }
-        return () => {
-            if (watchId) navigator.geolocation.clearWatch(watchId);
-            if (simInterval) clearInterval(simInterval);
-        };
+        return () => { if (watchId) navigator.geolocation.clearWatch(watchId); if (simInterval) clearInterval(simInterval); };
     }, [bookings, user, isSimulating]);
 
     useEffect(() => {
         if (user) {
             fetchBookings();
-            if (user.role === 'admin') {
-                fetchUnapprovedProviders();
-                fetchComplaints();
-                fetchAllUsers();
-                fetchAllServices();
-            }
-            if (user.role === 'provider') {
-                fetchMyServices();
-            }
+            if (user.role === 'admin') { fetchUnapprovedProviders(); fetchComplaints(); fetchAllUsers(); fetchAllServices(); }
+            if (user.role === 'provider') fetchMyServices();
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user]);
 
     const fetchMyServices = async () => {
         try {
-            const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services/my-services`, config);
+            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services/my-services`, { headers: { Authorization: `Bearer ${user.token}` } });
             setMyServices(res.data);
-        } catch (error) {
-            console.error('Failed to fetch my services', error);
-        }
+        } catch (e) { console.error(e); }
     };
 
     const fetchUnapprovedProviders = async () => {
         try {
-            const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/users`, config);
-            // Filter on client side or backend should filter. backend returns all users.
-            const providers = res.data.filter(u => u.role === 'provider' && !u.isProviderApproved);
-            setUnapprovedProviders(providers);
-        } catch (error) {
-            console.error(error);
-        }
+            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/users`, { headers: { Authorization: `Bearer ${user.token}` } });
+            setUnapprovedProviders(res.data.filter(u => u.role === 'provider' && !u.isProviderApproved));
+        } catch (e) { console.error(e); }
     };
 
     const handleApproveProvider = async (id) => {
         try {
-            const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.put(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/approve-provider/${id}`, {}, config);
-            toast.success('Provider approved');
-            fetchUnapprovedProviders();
-        } catch (error) {
-            console.error(error);
-            toast.error('Approval failed');
-        }
+            await axios.put(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/approve-provider/${id}`, {}, { headers: { Authorization: `Bearer ${user.token}` } });
+            toast.success('Provider approved'); fetchUnapprovedProviders();
+        } catch (e) { toast.error('Approval failed'); }
     };
 
     const fetchComplaints = async () => {
         try {
-            const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/complaints`, config);
+            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/complaints`, { headers: { Authorization: `Bearer ${user.token}` } });
             setComplaints(res.data);
-        } catch (error) {
-            console.error('Failed to fetch complaints', error);
-        }
+        } catch (e) { console.error(e); }
     };
 
     const fetchAllUsers = async () => {
         try {
-            const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/users`, config);
+            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/users`, { headers: { Authorization: `Bearer ${user.token}` } });
             setAllUsers(res.data);
-        } catch (error) {
-            console.error('Failed to fetch users:', error);
-        }
+        } catch (e) { console.error(e); }
     };
 
     const fetchAllServices = async () => {
         try {
             const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services`);
             setAllServices(res.data);
-        } catch (error) {
-            console.error('Failed to fetch services:', error);
-        }
+        } catch (e) { console.error(e); }
     };
 
     const handleDeleteUser = async (id) => {
-        if (!window.confirm('Are you sure you want to completely ban and delete this user?')) return;
+        if (!window.confirm('Delete this user?')) return;
         try {
-            const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.delete(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/users/${id}`, config);
-            toast.success('User deleted successfully');
-            fetchAllUsers();
-            fetchUnapprovedProviders(); // Refresh pending list just in case
-        } catch (error) {
-            console.error(error);
-            toast.error('Failed to delete user');
-        }
+            await axios.delete(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/users/${id}`, { headers: { Authorization: `Bearer ${user.token}` } });
+            toast.success('User deleted'); fetchAllUsers(); fetchUnapprovedProviders();
+        } catch (e) { toast.error('Failed to delete user'); }
     };
 
     const handleDeleteService = async (id) => {
-        if (!window.confirm('Are you sure you want to forcibly remove this service?')) return;
+        if (!window.confirm('Delete this service?')) return;
         try {
-            const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.delete(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services/${id}`, config);
-            toast.success('Service removed from platform');
-            fetchAllServices();
-        } catch (error) {
-            console.error(error);
-            toast.error('Failed to delete service');
-        }
-    };
-
-    const handleSubmitComplaint = async () => {
-        if (!complaintText.trim()) return;
-        try {
-            const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/complaints`, {
-                bookingId: selectedBookingForComplaint,
-                description: complaintText
-            }, config);
-            toast.success('Complaint submitted successfully');
-            setShowComplaintModal(false);
-            setComplaintText('');
-        } catch (error) {
-            toast.error(error.response?.data?.message || 'Failed to submit complaint');
-        }
+            await axios.delete(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services/${id}`, { headers: { Authorization: `Bearer ${user.token}` } });
+            toast.success('Service deleted'); fetchAllServices();
+        } catch (e) { toast.error('Failed to delete service'); }
     };
 
     const handleRemoveMyService = async (id) => {
-        if (!window.confirm('Are you sure you want to remove this service from your portfolio?')) return;
+        if (!window.confirm('Remove this service?')) return;
         try {
-            const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.delete(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services/${id}`, config);
-            toast.success('Service successfully removed');
-            fetchMyServices();
-        } catch (error) {
-            console.error(error);
-            toast.error('Failed to remove service');
-        }
+            await axios.delete(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services/${id}`, { headers: { Authorization: `Bearer ${user.token}` } });
+            toast.success('Service removed'); fetchMyServices();
+        } catch (e) { toast.error('Failed to remove service'); }
     };
 
     const handleResolveComplaint = async (id, action) => {
         try {
-            const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.put(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/complaints/${id}/resolve`, { action }, config);
-            toast.success(`Complaint successfully resolved (${action})`);
-            fetchComplaints();
-        } catch (error) {
-            console.error(error);
-            toast.error('Failed to resolve complaint');
-        }
+            await axios.put(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/complaints/${id}/resolve`, { action }, { headers: { Authorization: `Bearer ${user.token}` } });
+            toast.success(`Complaint resolved: ${action}`); fetchComplaints();
+        } catch (e) { toast.error('Failed to resolve complaint'); }
     };
 
     const handleBroadcast = (e) => {
         e.preventDefault();
         if (!broadcastMessage.trim()) return;
-
         socket.emit('admin_broadcast', broadcastMessage);
         setBroadcastMessage('');
-        toast.success('System broadcast sent successfully!');
+        toast.success('Broadcast sent');
+    };
+
+    const handleSubmitComplaint = async () => {
+        if (!complaintText.trim()) return;
+        try {
+            await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/complaints`, { bookingId: selectedBookingForComplaint, description: complaintText }, { headers: { Authorization: `Bearer ${user.token}` } });
+            toast.success('Complaint submitted'); setShowComplaintModal(false); setComplaintText('');
+        } catch (e) { toast.error('Failed to submit complaint'); }
     };
 
     const handleAddService = async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
-        const serviceData = {
-            serviceName: formData.get('serviceName'),
-            category: formData.get('category'),
-            description: formData.get('description'),
-            price: formData.get('price'),
-            location: formData.get('location'),
-        };
-
+        const serviceData = { serviceName: formData.get('serviceName'), category: formData.get('category'), description: formData.get('description'), price: formData.get('price'), location: formData.get('location') };
         try {
-            const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services`, serviceData, config);
-            toast.success('Service added successfully');
-            e.target.reset();
-            fetchMyServices(); // Refresh portfolio immediately
-        } catch (error) {
-            console.error(error);
-            toast.error('Failed to add service');
-        }
+            await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services`, serviceData, { headers: { Authorization: `Bearer ${user.token}` } });
+            toast.success('Service added'); e.target.reset(); fetchMyServices();
+        } catch (e) { toast.error('Failed to add service'); }
     };
 
     const fetchBookings = async () => {
         try {
-            const config = {
-                headers: { Authorization: `Bearer ${user.token}` },
-            };
-            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/bookings`, config);
+            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/bookings`, { headers: { Authorization: `Bearer ${user.token}` } });
             setBookings(res.data);
-        } catch (error) {
-            console.error(error);
-            toast.error('Failed to fetch bookings');
-        } finally {
-            setLoading(false);
-        }
+        } catch (e) { console.error(e); } finally { setLoading(false); }
     };
 
     const handleUpdateBookingStatus = async (bookingId, newStatus) => {
         try {
-            const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.put(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/bookings/${bookingId}/status`, { status: newStatus }, config);
-            toast.success(`Booking status updated to ${newStatus}`);
-            fetchBookings();
-        } catch (error) {
-            toast.error(error.response?.data?.message || 'Failed to update status');
-        }
+            await axios.put(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/bookings/${bookingId}/status`, { status: newStatus }, { headers: { Authorization: `Bearer ${user.token}` } });
+            toast.success(`Updated to ${newStatus}`); fetchBookings();
+        } catch (e) { toast.error('Failed to update status'); }
     };
 
     const handlePay = async (bookingId, amount) => {
         alert(`Initiating payment for ₹${amount}`);
-        // Mock Payment Success
         try {
-            const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            // Call verify directly for test (Simulating Razorpay success)
-            // In real app, call createOrder, then Razorpay opens, then verify.
-            // Here we just mock update status to Paid.
-            // Actually, we don't have a direct "mark paid" endpoint for users.
-            // We rely on verifyPayment.
-            // Let's just create a dummy Payment verify call.
-            await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/payments/verify`, {
-                bookingId,
-                razorpay_order_id: 'test_order',
-                razorpay_payment_id: 'test_payment',
-                razorpay_signature: 'test_signature' // This will fail signature check in backend!
-            }, config);
-            // Wait, backend checks signature. We can't mock easily without bypassing.
-            // For now, let's just alert "Payment Integration Ready".
-            // To test, user needs valid keys.
-        } catch (error) {
-            console.error(error);
-            // toast.error('Payment failed');
-        }
+            await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/payments/verify`, { bookingId, razorpay_order_id: 'test', razorpay_payment_id: 'test', razorpay_signature: 'test' }, { headers: { Authorization: `Bearer ${user.token}` } });
+        } catch (e) { console.error(e); }
     };
 
     const handleSubmitReview = async () => {
         try {
-            const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/reviews`, {
-                bookingId: selectedBookingForReview,
-                rating,
-                comment: reviewComment
-            }, config);
-            toast.success('Review submitted successfully!');
-            setShowReviewModal(false);
-            setReviewComment('');
-            setRating(5);
-            fetchBookings(); // Refresh to hide review button if implemented
-        } catch (error) {
-            toast.error(error.response?.data?.message || 'Failed to submit review');
-        }
+            await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/reviews`, { bookingId: selectedBookingForReview, rating, comment: reviewComment }, { headers: { Authorization: `Bearer ${user.token}` } });
+            toast.success('Review submitted'); setShowReviewModal(false); setReviewComment(''); setRating(5); fetchBookings();
+        } catch (e) { toast.error('Failed to submit review'); }
     };
 
     const handleScan = async (scannedData) => {
-        // scannedData should be Provider ID
         if (!selectedBookingId) return;
-
         try {
-            const config = { headers: { Authorization: `Bearer ${user.token}` } };
-            const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/bookings/verify-provider`, {
-                bookingId: selectedBookingId,
-                scannedProviderId: scannedData
-            }, config);
-
-            toast.success(res.data.message);
-            setShowScanner(false);
-            fetchBookings(); // Refresh status
-        } catch (error) {
-            toast.error(error.response?.data?.message || 'Verification failed');
-        }
+            const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/bookings/verify-provider`, { bookingId: selectedBookingId, scannedProviderId: scannedData }, { headers: { Authorization: `Bearer ${user.token}` } });
+            toast.success(res.data.message); setShowScanner(false); fetchBookings();
+        } catch (e) { toast.error('Verification failed'); }
     };
 
-    if (loading) return <div className="p-8 text-center">Loading Dashboard...</div>;
+    if (loading) return <div className="p-8 text-center text-blue-600 font-bold animate-pulse">Loading Your Workspace...</div>;
 
     const displayedBookings = user?.role === 'provider' ? bookings.filter(b => {
         if (activeTab === 'New Requests') return b.status === 'Pending';
@@ -441,747 +237,322 @@ const Dashboard = () => {
     }) : bookings;
 
     return (
-        <div className="max-w-7xl mx-auto px-4 py-8">
-            <h1 className="text-3xl font-bold mb-8">
-                {user.role === 'customer' && 'My Bookings'}
-                {user.role === 'provider' && 'My Jobs'}
-                {user.role === 'admin' && 'Admin Dashboard'}
-            </h1>
-
-            {user.role === 'admin' && (
-                <AnalyticsCharts bookings={bookings} role={user.role} token={user.token} />
-            )}
-
-            {user.role === 'provider' && user.isProviderApproved && (
-                <>
-                    <div className="mb-12">
-                        <h2 className="text-2xl font-bold mb-4 text-gray-800">Earnings Wallet</h2>
-                        <div className="bg-gradient-to-br from-green-500 to-emerald-700 rounded-2xl shadow-xl p-6 mb-10 text-white flex flex-col md:flex-row justify-between items-center gap-6">
-                            <div className="text-center md:text-left">
-                                <p className="text-xs font-bold text-green-100 uppercase tracking-widest opacity-80">Available Balance</p>
-                                <h3 className="text-5xl font-black mt-1">₹{bookings.filter(b => b.status === 'Completed').reduce((sum, b) => sum + (b.serviceId?.price || 0), 0).toLocaleString()}</h3>
-                                <p className="text-[10px] text-green-200 mt-2 font-medium">Cleared and ready for withdrawal</p>
-                            </div>
-                            <button onClick={() => toast.info('Payout requests are processed on the 1st of every month.')} className="w-full md:w-auto bg-white text-green-700 font-black px-8 py-4 rounded-xl hover:bg-green-50 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2">
-                                <ArrowUpRight size={20} />
-                                <span>Request Payout</span>
-                            </button>
-                        </div>
-
-                        <h2 className="text-2xl font-bold mb-4 text-gray-800">My Service Portfolio</h2>
-                        <div className="mb-10">
-                            {/* Desktop Table */}
-                            <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                                <table className="min-w-full divide-y divide-gray-200">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Service Title</th>
-                                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Category</th>
-                                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Price (₹)</th>
-                                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
-                                        {myServices.map(service => (
-                                            <tr key={service._id} className="hover:bg-gray-50">
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{service.serviceName}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{service.category}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-black">₹{service.price}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                    <button
-                                                        onClick={() => handleRemoveMyService(service._id)}
-                                                        className="flex items-center gap-2 text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-all font-bold"
-                                                    >
-                                                        <Trash2 size={14} />
-                                                        <span>Remove</span>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            {/* Mobile List View */}
-                            <div className="md:hidden space-y-4">
-                                {myServices.map(service => (
-                                    <div key={service._id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center">
-                                        <div>
-                                            <h4 className="font-bold text-gray-900">{service.serviceName}</h4>
-                                            <p className="text-[10px] text-blue-600 font-bold uppercase">{service.category}</p>
-                                            <p className="text-lg font-black text-gray-900 mt-1">₹{service.price}</p>
-                                        </div>
-                                        <button
-                                            onClick={() => handleRemoveMyService(service._id)}
-                                            className="bg-red-50 text-red-600 p-3 rounded-xl hover:bg-red-100 transition-colors"
-                                        >
-                                            <X size={18} />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                            {myServices.length === 0 && (
-                                <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center text-gray-500">
-                                    You have not listed any services yet.
-                                </div>
-                            )}
-                                             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-10">
-                            <h2 className="text-xl font-bold mb-4">Add New Service</h2>
-                            <form onSubmit={handleAddService} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Service Name</label>
-                                    <input type="text" name="serviceName" required className="w-full border-2 border-gray-50 bg-gray-50 p-3 rounded-xl focus:border-blue-500 outline-none" />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Category</label>
-                                    <select name="category" required className="w-full border-2 border-gray-50 bg-gray-50 p-3 rounded-xl focus:border-blue-500 outline-none">
-                                        <option value="">Select Category</option>
-                                        <option value="Plumbing">Plumbing</option>
-                                        <option value="Electrical">Electrical</option>
-                                        <option value="Cleaning">Cleaning</option>
-                                        <option value="Carpentry">Carpentry</option>
-                                        <option value="Painting">Painting</option>
-                                        <option value="Pest Control">Pest Control</option>
-                                        <option value="Appliance Repair">Appliance Repair</option>
-                                    </select>
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Description</label>
-                                    <textarea name="description" className="w-full border-2 border-gray-50 bg-gray-50 p-3 rounded-xl focus:border-blue-500 outline-none" rows="3"></textarea>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Price (₹)</label>
-                                    <input type="number" name="price" required className="w-full border-2 border-gray-50 bg-gray-50 p-3 rounded-xl focus:border-blue-500 outline-none" />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Primary Work Location</label>
-                                    <input type="text" name="location" required className="w-full border-2 border-gray-50 bg-gray-50 p-3 rounded-xl focus:border-blue-500 outline-none" placeholder="e.g. Coimbatore center" />
-                                </div>
-                                <button type="submit" className="md:col-span-2 bg-blue-600 text-white font-black py-4 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-100 transition-all active:scale-95 flex items-center justify-center gap-2">
-                                    <PlusCircle size={20} />
-                                    <span>Create Service Listing</span>
-                                </button>
-                            </form>
-                        </div>
-
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-10 flex flex-col items-center text-center">
-                            <h2 className="text-xl font-bold mb-2">Your Provider Identity QR</h2>
-                            <div className="p-4 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 mb-4">
-                                <QRCodeSVG value={user._id} size={150} />
-                            </div>
-                            <p className="text-sm text-gray-500 max-w-xs mb-6 font-medium">Show this to customers upon arrival to start the service session.</p>
-
-                            <div className="w-full pt-6 border-t border-gray-50">
-                                <h3 className="text-[10px] font-bold text-gray-300 uppercase tracking-widest mb-4">Verification Simulation</h3>
-                                <button
-                                    onClick={() => setIsSimulating(!isSimulating)}
-                                    className={`w-full max-w-xs px-6 py-4 rounded-xl font-black shadow-lg transition-all transform active:scale-95 ${isSimulating
-                                        ? 'bg-red-50 text-red-600 border-2 border-red-100'
-                                        : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-100'
-                                        }`}
-                                >
-                                    {isSimulating ? '🛑 Stop GPS Simulation' : '🚀 Start Live GPS Simulation'}
-                                </button>
-                            </div>
-                        </div>
-
-                        <h2 className="text-2xl font-bold mb-4 text-gray-800">Job Pipeline</h2>
-                        <div className="flex space-x-2 border-b border-gray-200 mb-6">
-                            {['New Requests', 'Active Jobs', 'Past Jobs'].map((tab) => (
-                                <button
-                                    key={tab}
-                                    onClick={() => setActiveTab(tab)}
-                                    className={`py-2 px-6 text-sm font-black rounded-t-xl transition-colors relative ${activeTab === tab
-                                        ? 'text-blue-600 bg-blue-50'
-                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                                        }`}
-                                >
-                                    {tab}
-                                    {activeTab === tab && (
-                                        <motion.div
-                                            layoutId="active-tab"
-                                            className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 rounded-full"
-                                        />
-                                    )}
-                                </button>
-                            ))}
-                        </div>
-     </div>
-            )}
-
-            {user.role === 'admin' && (
-                <div className="mb-8">
-                    <h2 className="text-xl font-bold mb-4">Pending Provider Approvals</h2>
-                    {unapprovedProviders.length === 0 ? (
-                        <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center text-gray-400 font-medium mb-8">
-                            No pending approvals.
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-                            {unapprovedProviders.map(provider => (
-                                <div key={provider._id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
-                                    <div className="mb-4">
-                                        <p className="font-black text-gray-900 leading-tight">{provider.name}</p>
-                                        <p className="text-xs text-gray-500 font-medium mt-0.5">{provider.email}</p>
-                                        <p className="text-[10px] text-blue-600 font-bold uppercase tracking-widest mt-2 px-2 py-0.5 bg-blue-50 rounded-full inline-block">Pending Review</p>
-                                    </div>
-                                    <button
-                                        onClick={() => handleApproveProvider(provider._id)}
-                                        className="w-full bg-green-600 text-white font-black py-3 rounded-xl hover:bg-green-700 shadow-lg shadow-green-100 transition-all active:scale-95"
-                                    >
-                                        Approve Provider
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    <h2 className="text-xl font-bold mb-4 text-red-600">Customer Complaints</h2>
-                    {complaints.length === 0 ? (
-                        <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center text-gray-400 font-medium mb-8">
-                            No complaints logged.
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                            {complaints.map(complaint => (
-                                <div key={complaint._id} className="bg-white p-6 rounded-2xl shadow-sm border border-red-50 flex flex-col">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div>
-                                            <p className="font-black text-gray-900 leading-tight">Issue: {complaint.providerId?.name}</p>
-                                            <p className="text-[10px] text-gray-400 font-bold uppercase mt-1 tracking-tight">Reported by {complaint.customerId?.name}</p>
-                                        </div>
-                                        <span className={`px-2.5 py-1 text-[10px] font-black rounded-full uppercase tracking-tighter shadow-sm ${complaint.status === 'Resolved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                            {complaint.status}
-                                        </span>
-                                    </div>
-                                    <div className="bg-red-50/50 p-4 rounded-xl border border-red-100/50 text-sm text-gray-700 mb-5 italic leading-relaxed">
-                                        "{complaint.description}"
-                                    </div>
-                                    <div className="flex flex-col gap-2 mt-auto">
-                                        {complaint.status !== 'Resolved' && (
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <button
-                                                    onClick={() => handleResolveComplaint(complaint._id, 'refund')}
-                                                    className="flex items-center justify-center gap-2 bg-purple-600 text-white py-2 text-xs font-black rounded-lg hover:bg-purple-700 shadow-md transition-all active:scale-95"
-                                                >
-                                                    <RotateCcw size={12} />
-                                                    <span>Issue Refund</span>
-                                                </button>
-                                                <button
-                                                    onClick={() => handleResolveComplaint(complaint._id, 'dismiss')}
-                                                    className="flex items-center justify-center gap-2 bg-gray-100 text-gray-600 py-2 text-xs font-black rounded-lg hover:bg-gray-200 transition-all active:scale-95"
-                                                >
-                                                    <XCircle size={12} />
-                                                    <span>Dismiss</span>
-                                                </button>
-                                            </div>
-                                        )}
-                                        <button
-                                            onClick={() => setActiveChatBooking({ _id: complaint.bookingId?._id, serviceId: complaint.bookingId?.serviceId })}
-                                            className="w-full bg-blue-50 text-blue-600 py-2.5 text-xs font-black rounded-lg border border-blue-100 transition-all hover:bg-blue-100"
-                                        >
-                                            View Chat Logs & Evidence
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    <h2 className="text-xl font-bold mb-4 mt-8 text-orange-600">Global System Broadcast</h2>
-                    <div className="bg-orange-50 p-6 md:p-8 rounded-2xl shadow-sm border border-orange-100 mb-8">
-                        <form onSubmit={handleBroadcast} className="flex flex-col md:flex-row gap-4">
-                            <input
-                                type="text"
-                                className="flex-grow border-2 border-orange-100 rounded-xl p-4 focus:outline-none focus:border-orange-500 bg-white placeholder:text-gray-300 font-medium"
-                                placeholder="Type an urgent message to broadcast to all online users..."
-                                value={broadcastMessage}
-                                onChange={(e) => setBroadcastMessage(e.target.value)}
-                            />
-                            <button type="submit" className="bg-orange-600 font-black text-white px-8 py-4 rounded-xl hover:bg-orange-700 shadow-lg shadow-orange-100 whitespace-nowrap transition-all active:scale-95 leading-none">
-                                📢 Send Broadcast
-                            </button>
-                        </form>
-                        <p className="text-[10px] text-orange-400 font-bold uppercase mt-3 tracking-widest text-center md:text-left">Warning: This will pop up on every active user's screen immediately.</p>
-                    </div>
-
-                    <h2 className="text-xl font-bold mb-4 mt-12 text-blue-800">Customers Directory</h2>
-                    <div className="mb-8">
-                        {/* Desktop Table */}
-                        <div className="hidden md:block bg-white rounded-xl shadow-sm border border-blue-100 overflow-hidden">
-                            <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-blue-50">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-blue-700 uppercase tracking-wider">Customer Name</th>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-blue-700 uppercase tracking-wider">Email</th>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-blue-700 uppercase tracking-wider">Joined Date</th>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-blue-700 uppercase tracking-wider">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {allUsers.filter(u => u.role === 'customer').map(u => (
-                                        <tr key={u._id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{u.name}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{u.email}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(u.createdAt).toLocaleDateString()}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <button onClick={() => handleDeleteUser(u._id)} className="flex items-center gap-2 text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-xl font-black transition-all">
-                                                    <Trash2 size={14} />
-                                                    <span>Ban Customer</span>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                        {/* Mobile View */}
-                        <div className="md:hidden space-y-4">
-                            {allUsers.filter(u => u.role === 'customer').map(u => (
-                                <div key={u._id} className="bg-white p-4 rounded-2xl shadow-sm border border-blue-100 flex justify-between items-center">
-                                    <div>
-                                        <p className="font-bold text-gray-900">{u.name}</p>
-                                        <p className="text-xs text-gray-500">{u.email}</p>
-                                        <p className="text-[10px] text-blue-600 font-bold mt-1">Joined: {new Date(u.createdAt).toLocaleDateString()}</p>
-                                    </div>
-                                    <button onClick={() => handleDeleteUser(u._id)} className="bg-red-50 text-red-600 px-3 py-2 rounded-xl text-xs font-bold">Ban</button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <h2 className="text-xl font-bold mb-4 text-indigo-800">Verified Providers Hub</h2>
-                    <div className="mb-8">
-                        {/* Desktop Table */}
-                        <div className="hidden md:block bg-white rounded-xl shadow-sm border border-indigo-100 overflow-hidden">
-                            <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-indigo-50">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-indigo-700 uppercase tracking-wider">Provider Name</th>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-indigo-700 uppercase tracking-wider">Email</th>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-indigo-700 uppercase tracking-wider">Status</th>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-indigo-700 uppercase tracking-wider">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {allUsers.filter(u => u.role === 'provider' && u.isProviderApproved).map(u => (
-                                        <tr key={u._id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{u.name}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{u.email}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-bold flex items-center mt-3"><span className="w-2 h-2 rounded-full bg-green-500 mr-2"></span> Active</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <button onClick={() => handleDeleteUser(u._id)} className="flex items-center gap-2 text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-xl font-black transition-all">
-                                                    <ShieldOff size={14} />
-                                                    <span>Revoke Access</span>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                        {/* Mobile View */}
-                        <div className="md:hidden space-y-4">
-                            {allUsers.filter(u => u.role === 'provider' && u.isProviderApproved).map(u => (
-                                <div key={u._id} className="bg-white p-4 rounded-2xl shadow-sm border border-indigo-100 flex justify-between items-center">
-                                    <div>
-                                        <p className="font-bold text-gray-900">{u.name}</p>
-                                        <p className="text-xs text-gray-500">{u.email}</p>
-                                        <p className="text-[10px] text-green-600 font-bold mt-1 uppercase">● Active Provider</p>
-                                    </div>
-                                    <button onClick={() => handleDeleteUser(u._id)} className="bg-red-50 text-red-600 px-3 py-2 rounded-xl text-xs font-bold">Revoke</button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <h2 className="text-xl font-bold mb-4">Platform Service Registry</h2>
-                    <div className="mb-8">
-                        {/* Desktop Table */}
-                        <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                            <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Service Name</th>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Category</th>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Price</th>
-                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {allServices.map(s => (
-                                        <tr key={s._id}>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{s.serviceName}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{s.category}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-black">₹{s.price}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <button onClick={() => handleDeleteService(s._id)} className="flex items-center gap-2 text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-xl font-black transition-all text-xs uppercase">
-                                                    <Trash2 size={12} />
-                                                    <span>Remove</span>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                        {/* Mobile View */}
-                        <div className="md:hidden space-y-4">
-                            {allServices.map(s => (
-                                <div key={s._id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center">
-                                    <div>
-                                        <p className="font-bold text-gray-900">{s.serviceName}</p>
-                                        <p className="text-xs text-gray-500">{s.category} | ₹{s.price}</p>
-                                    </div>
-                                    <button onClick={() => handleDeleteService(s._id)} className="text-red-600 font-bold uppercase text-[10px]">Remove</button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-7xl mx-auto px-4 py-8">
+            <div className="flex justify-between items-center mb-12">
+                <motion.h1 initial={{ x: -20 }} animate={{ x: 0 }} className="text-4xl font-black text-gray-900 tracking-tight">
+                    {user.role === 'customer' && 'My Bookings'}
+                    {user.role === 'provider' && 'My Jobs'}
+                    {user.role === 'admin' && 'Admin Dashboard'}
+                </motion.h1>
+                <div className="bg-blue-50 px-4 py-2 rounded-full flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
+                    <span className="text-sm font-bold text-blue-700 uppercase tracking-widest">{user.role}</span>
                 </div>
-            )}
-
-
-            {showScanner && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-[2000] p-4">
-                    <div className="bg-white p-6 rounded-2xl w-full max-w-md shadow-2xl">
-                        <h2 className="text-xl font-bold mb-4 text-center">Scan Provider QR</h2>
-                        <QRScanner onScan={handleScan} />
-                        <button
-                            onClick={() => setShowScanner(false)}
-                            className="mt-4 w-full bg-red-600 text-white py-3 rounded-xl font-black flex items-center justify-center gap-2 shadow-lg shadow-red-100 active:scale-95 transition-all"
-                        >
-                            <X size={18} />
-                            <span>Close Scanner</span>
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {showComplaintModal && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-[2000] p-4">
-                    <div className="bg-white p-6 rounded-2xl w-full max-w-md shadow-2xl">
-                        <h2 className="text-xl font-bold mb-4 text-red-600">Report an Issue</h2>
-                        <textarea
-                            className="w-full border p-3 rounded mb-4"
-                            rows="4"
-                            placeholder="Please describe the issue or mistake made by the provider..."
-                            value={complaintText}
-                            onChange={(e) => setComplaintText(e.target.value)}
-                        ></textarea>
-                        <div className="flex justify-end gap-2">
-                            <button
-                                onClick={() => {
-                                    setShowComplaintModal(false);
-                                    setComplaintText('');
-                                }}
-                                className="bg-gray-100 text-gray-600 px-6 py-2.5 rounded-xl font-bold hover:bg-gray-200 transition-all"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleSubmitComplaint}
-                                className="bg-red-600 text-white px-6 py-2.5 rounded-xl font-black hover:bg-red-700 shadow-lg shadow-red-100 transition-all active:scale-95 flex items-center gap-2"
-                            >
-                                <AlertTriangle size={16} />
-                                <span>Submit Report</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {showReviewModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-                    <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-2xl">
-                        <h2 className="text-2xl font-bold mb-4 text-gray-800">Rate Your Experience</h2>
-                        
-                        <div className="flex justify-center gap-2 mb-6 text-3xl">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                                <button
-                                    key={star}
-                                    onClick={() => setRating(star)}
-                                    className={`${star <= rating ? 'text-yellow-400' : 'text-gray-300'} hover:scale-110 transition-transform`}
-                                >
-                                    ★
-                                </button>
-                            ))}
-                        </div>
-
-<<<<<<< ours
-
-            {/* Dashboard Control/Header Section adjustments for mobile */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                {/* Desktop Table View */}
-                <div className="hidden md:block overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Service</th>
-                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date & Time</th>
-                                {user.role === 'provider' && <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Service Address</th>}
-                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Amount</th>
-                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            <AnimatePresence mode="popLayout">
-                                {(user.role === 'provider' ? bookings.filter(b => {
-                                    if (activeTab === 'New Requests') return b.status === 'Pending';
-                                    if (activeTab === 'Active Jobs') return ['Accepted', 'OnTheWay', 'In Progress', 'Paid'].includes(b.status);
-                                    if (activeTab === 'Past Jobs') return ['Completed', 'Cancelled', 'Refunded'].includes(b.status);
-                                    return true;
-                                }) : bookings).map((booking) => (
-                                    <motion.tr
-                                        key={booking._id}
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, x: -20 }}
-                                        className="hover:bg-gray-50"
-                                    >
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm font-bold text-gray-900">{booking.serviceId?.serviceName || 'Unknown Service'}</div>
-                                            <div className="text-xs text-gray-500">{booking.serviceId?.category}</div>
-                                            {booking.status === 'OnTheWay' && user.role === 'customer' && (
-                                                <div className="mt-4 border-t pt-4 w-[400px]">
-                                                    <LiveTrackingMap
-                                                        providerLocation={liveLocations[booking._id]}
-                                                        providerName={booking.providerId?.name || 'Provider'}
-                                                    />
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                                            <div>{new Date(booking.date).toLocaleDateString()}</div>
-                                            <div className="text-xs text-gray-500">{booking.time}</div>
-                                        </td>
-                                        {user.role === 'provider' && (
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="text-sm font-bold text-blue-600 max-w-[200px] truncate" title={booking.customerId?.phone || 'No address provided'}>
-                                                    {booking.customerId?.phone || 'No address provided'}
-                                                </div>
-                                            </td>
-                                        )}
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full shadow-sm
-                                                ${booking.status === 'Completed' ? 'bg-green-100 text-green-800' :
-                                                    booking.status === 'Paid' ? 'bg-blue-100 text-blue-800' :
-                                                        'bg-yellow-100 text-yellow-800'}`}>
-                                                {booking.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                                            ₹{booking.serviceId?.price}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                            {/* Actions */}
-                                            {user.role === 'customer' && booking.status === 'Pending' && (
-                                                <button onClick={() => handlePay(booking._id, booking.serviceId?.price)} className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 shadow-lg shadow-green-100 transition-all font-black">Pay ₹{booking.serviceId?.price}</button>
-                                            )}
-                                            {user.role === 'provider' && booking.status !== 'Completed' && (
-                                                <select
-                                                    className="border-2 border-gray-100 p-2 rounded-xl bg-white text-blue-600 font-black active:scale-95 transition-transform outline-none focus:border-blue-500 shadow-sm"
-                                                    value={booking.status}
-                                                    onChange={(e) => handleUpdateBookingStatus(booking._id, e.target.value)}
-                                                >
-                                                    <option value="Pending">Pending</option>
-                                                    <option value="Accepted">Accepted</option>
-                                                    <option value="OnTheWay">On The Way</option>
-                                                    <option value="In Progress">In Progress</option>
-                                                    <option value="Completed">Completed</option>
-                                                    <option value="Cancelled">Cancelled</option>
-                                                </select>
-                                            )}
-
-                                            <div className="inline-flex gap-2 align-middle">
-                                                <button
-                                                    onClick={() => setActiveChatBooking(booking)}
-                                                    className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-100 transition-all font-black"
-                                                >
-                                                    <MessageSquare size={16} />
-                                                    <span>Chat</span>
-                                                </button>
-
-                                                {user.role === 'customer' && (booking.status === 'Paid' || booking.status === 'Pending') && (
-                                                    <button
-                                                        onClick={() => { setSelectedBookingId(booking._id); setShowScanner(true); }}
-                                                        className="inline-flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-xl hover:bg-purple-700 shadow-lg shadow-purple-100 transition-all font-black"
-                                                    >
-                                                        <QrCode size={16} />
-                                                        <span>Verify QR</span>
-                                                    </button>
-                                                )}
-
-                                                {(booking.status === 'Paid' || booking.status === 'Completed') && (
-                                                    <button
-                                                        onClick={() => generateInvoice(booking)}
-                                                        className="inline-flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all font-black"
-                                                    >
-                                                        <FileText size={16} />
-                                                        <span>Invoice</span>
-                                                    </button>
-                                                )}
-
-                                                {user.role === 'customer' && (
-                                                    <button
-                                                        onClick={() => { setSelectedBookingForComplaint(booking._id); setShowComplaintModal(true); }}
-                                                        className="inline-flex items-center gap-2 bg-red-50 text-red-600 px-4 py-2 rounded-xl hover:bg-red-100 transition-all font-black border border-red-100"
-                                                    >
-                                                        <AlertTriangle size={16} />
-                                                        <span>Report</span>
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </motion.tr>
-                                ))}
-                            </AnimatePresence>
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* Mobile Card View */}
-                <div className="md:hidden divide-y divide-gray-100">
-                    <AnimatePresence mode="popLayout">
-                        {(user.role === 'provider' ? bookings.filter(b => {
-                            if (activeTab === 'New Requests') return b.status === 'Pending';
-                            if (activeTab === 'Active Jobs') return ['Accepted', 'OnTheWay', 'In Progress', 'Paid'].includes(b.status);
-                            if (activeTab === 'Past Jobs') return ['Completed', 'Cancelled', 'Refunded'].includes(b.status);
-                            return true;
-                        }) : bookings).map((booking) => (
-                            <motion.div
-                                key={booking._id}
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.9 }}
-                                className="p-5 bg-white space-y-4"
-                            >
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <h4 className="text-lg font-black text-gray-900 leading-tight">{booking.serviceId?.serviceName || 'Unknown Service'}</h4>
-                                        <p className="text-xs font-bold text-blue-600 uppercase tracking-widest mt-0.5">{booking.serviceId?.category}</p>
-                                    </div>
-                                    <span className={`px-3 py-1 text-[10px] font-black rounded-full uppercase tracking-tighter shadow-sm
-                                        ${booking.status === 'Completed' ? 'bg-green-100 text-green-700' :
-                                            booking.status === 'Paid' ? 'bg-blue-100 text-blue-700' :
-                                                'bg-orange-100 text-orange-700'}`}>
-                                        {booking.status}
-                                    </span>
-                                </div>
-
-                                <div className="flex items-center justify-between text-sm py-3 border-y border-dashed border-gray-100">
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] text-gray-400 font-bold uppercase">Scheduled</span>
-                                        <span className="font-bold text-gray-800">{new Date(booking.date).toLocaleDateString()} at {booking.time}</span>
-                                    </div>
-                                    <div className="flex flex-col text-right">
-                                        <span className="text-[10px] text-gray-400 font-bold uppercase">Amount</span>
-                                        <span className="font-black text-gray-900 text-lg">₹{booking.serviceId?.price}</span>
-                                    </div>
-                                </div>
-
-                                {user.role === 'provider' && (
-                                    <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100/50">
-                                        <span className="text-[10px] text-blue-400 font-bold uppercase block mb-1">Service Address</span>
-                                        <span className="text-sm font-bold text-blue-800 leading-tight">
-                                            {booking.customerId?.phone || 'No address provided'}
-                                        </span>
-                                    </div>
-                                )}
-
-                                {booking.status === 'OnTheWay' && user.role === 'customer' && (
-                                    <div className="rounded-xl overflow-hidden shadow-sm border border-gray-200">
-                                        <LiveTrackingMap
-                                            providerLocation={liveLocations[booking._id]}
-                                            providerName={booking.providerId?.name || 'Provider'}
-                                        />
-                                    </div>
-                                )}
-
-                                <div className="grid grid-cols-2 gap-3 pt-4">
-                                    {user.role === 'customer' && booking.status === 'Pending' && (
-                                        <button onClick={() => handlePay(booking._id, booking.serviceId?.price)} className="col-span-2 bg-green-600 text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-green-100 flex items-center justify-center gap-2">
-                                            Pay Now (₹{booking.serviceId?.price})
-                                        </button>
-                                    )}
-
-                                    {user.role === 'provider' && booking.status !== 'Completed' && (
-                                        <div className="col-span-2">
-                                            <p className="text-[10px] font-bold text-gray-400 uppercase mb-1 ml-1">Update Status</p>
-                                            <select
-                                                className="w-full border-2 border-gray-100 p-4 rounded-2xl bg-gray-50 text-blue-700 font-black appearance-none outline-none focus:border-blue-500 shadow-sm"
-                                                value={booking.status}
-                                                onChange={(e) => handleUpdateBookingStatus(booking._id, e.target.value)}
-                                            >
-                                                <option value="Pending">Pending</option>
-                                                <option value="Accepted">Accepted</option>
-                                                <option value="OnTheWay">On The Way</option>
-                                                <option value="In Progress">In Progress</option>
-                                                <option value="Completed">Completed</option>
-                                                <option value="Cancelled">Cancelled</option>
-                                            </select>
-                                        </div>
-                                    )}
-
-                                    <button
-                                        onClick={() => setActiveChatBooking(booking)}
-                                        className="flex items-center justify-center gap-2 bg-blue-600 text-white py-4 rounded-2xl font-black text-sm shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95"
-                                    >
-                                        <MessageSquare size={18} />
-                                        <span>Chat</span>
-                                    </button>
-
-                                    {user.role === 'customer' && (booking.status === 'Paid' || booking.status === 'Pending') && (
-                                        <button
-                                            onClick={() => { setSelectedBookingId(booking._id); setShowScanner(true); }}
-                                            className="flex items-center justify-center gap-2 bg-purple-600 text-white py-4 rounded-2xl font-black text-sm shadow-lg shadow-purple-100 hover:bg-purple-700 transition-all active:scale-95"
-                                        >
-                                            <QrCode size={18} />
-                                            <span>Verify QR</span>
-                                        </button>
-                                    )}
-
-                                    {(booking.status === 'Paid' || booking.status === 'Completed') && (
-                                        <button
-                                            onClick={() => generateInvoice(booking)}
-                                            className="flex items-center justify-center gap-2 bg-emerald-600 text-white py-4 rounded-2xl font-black text-sm shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95"
-                                        >
-                                            <FileText size={18} />
-                                            <span>Invoice</span>
-                                        </button>
-                                    )}
-
-                                    {user.role === 'customer' && (
-                                        <button
-                                            onClick={() => { setSelectedBookingForComplaint(booking._id); setShowComplaintModal(true); }}
-                                            className="col-span-2 flex items-center justify-center gap-2 bg-red-50 text-red-600 py-4 rounded-2xl font-black text-sm border-2 border-red-100 hover:bg-red-100 transition-all active:scale-95"
-                                        >
-                                            <AlertTriangle size={18} />
-                                            <span>Report Issue / Help</span>
-                                        </button>
-                                    )}
-                                </div>
-                            </motion.div>
-                        ))}
-                    </AnimatePresence>
-                </div>
-                {bookings.length === 0 && (
-                    <div className="p-12 text-center text-gray-400 italic">No activity found in this section.</div>
-                )}
             </div>
 
-            {/* Customer Feedback Section for Providers */}
+            {user.role === 'admin' && <AnalyticsCharts bookings={bookings} role={user.role} token={user.token} />}
+
             {user.role === 'provider' && user.isProviderApproved && (
-                <div className="mt-12 bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-                    <h2 className="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-3">
-                        ⭐ Customer Feedback
-                        <span className="text-sm font-normal text-gray-400 bg-gray-50 px-3 py-1 rounded-full">Recent Reviews</span>
+                <div className="mb-12">
+                    <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="bg-gradient-to-br from-green-500 to-emerald-700 rounded-3xl p-8 mb-10 text-white shadow-2xl flex flex-col md:flex-row justify-between items-center gap-8 border-4 border-white">
+                        <div>
+                            <p className="text-xs font-bold opacity-80 uppercase tracking-widest mb-1">Available Balance</p>
+                            <h3 className="text-6xl font-black">₹{bookings.filter(b => b.status === 'Completed').reduce((sum, b) => sum + (b.serviceId?.price || 0), 0).toLocaleString()}</h3>
+                        </div>
+                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => toast.info('Payout requests are processed on the 1st of every month.')} className="bg-white text-green-700 font-black px-10 py-5 rounded-2xl shadow-xl hover:bg-gray-50 transition-colors">Request Payout</motion.button>
+                    </motion.div>
+
+                    <h2 className="text-2xl font-black mb-6 flex items-center gap-2 text-gray-800"><PlusCircle size={28} className="text-blue-600" /> Offering New Service</h2>
+                    <motion.form initial={{ opacity: 0 }} animate={{ opacity: 1 }} onSubmit={handleAddService} className="bg-white p-8 rounded-3xl shadow-xl mb-12 grid grid-cols-1 md:grid-cols-2 gap-6 border border-gray-100">
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Service Title</label>
+                            <input name="serviceName" placeholder="e.g. Master Plumbing" required className="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-600 outline-none transition-all font-semibold" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Category</label>
+                            <select name="category" className="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-600 outline-none transition-all font-semibold">
+                                <option value="Cleaning">🧽 Cleaning</option>
+                                <option value="Plumbing">🚰 Plumbing</option>
+                                <option value="Electrician">⚡ Electrician</option>
+                                <option value="Gardening">🌻 Gardening</option>
+                            </select>
+                        </div>
+                        <div className="space-y-1 md:col-span-2">
+                            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Work Description</label>
+                            <textarea name="description" placeholder="Describe your expertise..." rows="3" className="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-600 outline-none transition-all font-semibold"></textarea>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Base Price (₹)</label>
+                            <input type="number" name="price" placeholder="500" required className="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-600 outline-none transition-all font-semibold" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Service Area</label>
+                            <input name="location" placeholder="City or Neighborhood" required className="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-600 outline-none transition-all font-semibold" />
+                        </div>
+                        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit" className="md:col-span-2 bg-blue-600 text-white py-5 rounded-2xl font-black text-lg shadow-lg shadow-blue-200 hover:bg-blue-700">Create My Listing</motion.button>
+                    </motion.form>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+                        <div className="lg:col-span-2 bg-white p-8 rounded-3xl shadow-xl border border-gray-100 flex flex-col md:flex-row items-center justify-between gap-8">
+                            <div className="text-center md:text-left">
+                                <h2 className="text-2xl font-black mb-2">Instant Verification</h2>
+                                <p className="text-gray-500 mb-6 max-w-sm">Customers scan this code to verify your arrival and start the service timer safely.</p>
+                                <motion.button whileHover={{ scale: 1.05 }} onClick={() => setIsSimulating(!isSimulating)} className={`px-8 py-3 rounded-2xl font-bold flex items-center gap-2 transition-all ${isSimulating ? 'bg-red-100 text-red-600 border-2 border-red-200' : 'bg-indigo-600 text-white'}`}>
+                                    {isSimulating ? <RotateCcw size={20} className="animate-spin" /> : <ArrowUpRight size={20} />}
+                                    {isSimulating ? 'Live Simulation Active' : 'Test Real-time Tracking'}
+                                </motion.button>
+                            </div>
+                            <div className="p-4 bg-blue-50 rounded-3xl border-2 border-blue-100 shadow-inner">
+                                <QRCodeSVG value={user._id} size={160} />
+                                <p className="text-[10px] text-center mt-2 font-black text-blue-400 uppercase tracking-tighter">Your unique Provider ID</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-white p-8 rounded-3xl shadow-xl border border-gray-100 flex flex-col justify-center text-center">
+                            <h3 className="text-xl font-black mb-2">Service Portfolio</h3>
+                            <p className="text-sm text-gray-500 mb-6">You have {myServices.length} active listings on the marketplace.</p>
+                            <div className="flex flex-wrap justify-center gap-2">
+                                {myServices.map(s => (
+                                    <span key={s._id} className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-bold">{s.serviceName}</span>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <h2 className="text-3xl font-black mb-6 text-gray-800 flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center"><Wallet size={24} /></div>
+                        Job Pipeline
                     </h2>
-                    <ReviewsList providerId={user._id} />
+                    <div className="flex bg-gray-100 p-1.5 rounded-2xl w-fit mb-8 shadow-inner">
+                        {['New Requests', 'Active Jobs', 'Past Jobs'].map(tab => (
+                            <button key={tab} onClick={() => setActiveTab(tab)} className={`py-2.5 px-6 rounded-xl text-sm font-black transition-all ${activeTab === tab ? 'bg-white text-blue-600 shadow-md transform scale-105' : 'text-gray-500 hover:text-gray-700'}`}>{tab}</button>
+                        ))}
+                    </div>
                 </div>
             )}
-        </div>
+
+            {user.role === 'admin' && (
+                <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="space-y-12 mb-16">
+                    <section>
+                        <h2 className="text-2xl font-black mb-6 flex items-center gap-2 text-red-600"><AlertTriangle /> Pending Approvals</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {unapprovedProviders.map(p => (
+                                <motion.div layout id={`provider-${p._id}`} key={p._id} className="p-6 bg-white rounded-3xl shadow-lg border-2 border-orange-50 flex flex-col gap-4 relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 w-16 h-16 bg-orange-100 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-150"></div>
+                                    <div className="z-10">
+                                        <h3 className="font-black text-lg">{p.name}</h3>
+                                        <p className="text-xs text-gray-500 font-bold uppercase">{p.email}</p>
+                                    </div>
+                                    <button onClick={() => handleApproveProvider(p._id)} className="w-full bg-black text-white py-3 rounded-2xl font-black text-sm hover:bg-gray-800 transition-colors z-10">Authorize Access</button>
+                                </motion.div>
+                            ))}
+                        </div>
+                    </section>
+                    
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                        <div className="bg-white p-8 rounded-3xl shadow-xl border border-gray-100">
+                            <h2 className="text-2xl font-black mb-6 flex items-center gap-2 text-red-500"><ShieldOff /> Active Disputes</h2>
+                            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+                                {complaints.map(c => (
+                                    <div key={c._id} className="p-5 bg-red-50 rounded-2xl border-l-8 border-red-500">
+                                        <p className="font-black text-red-900 mb-1">Issue reported by Customer</p>
+                                        <p className="text-sm text-red-700 leading-relaxed mb-4">{c.description}</p>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => handleResolveComplaint(c._id, 'dismissed')} className="px-4 py-2 bg-white text-gray-500 rounded-xl text-xs font-black shadow-sm uppercase">Dismiss</button>
+                                            <button onClick={() => handleResolveComplaint(c._id, 'refunded')} className="px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-black shadow-sm uppercase">Process Refund</button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="bg-gray-900 p-8 rounded-3xl shadow-2xl text-white">
+                            <h2 className="text-2xl font-black mb-6 flex items-center gap-2 text-blue-400"><MessageSquare size={28} /> Admin Broadcast</h2>
+                            <p className="text-gray-400 text-sm mb-6 font-bold uppercase tracking-wider">Send an urgent alert to all active users</p>
+                            <form onSubmit={handleBroadcast} className="space-y-4">
+                                <textarea className="w-full bg-gray-800 border-2 border-gray-700 p-5 rounded-2xl text-white outline-none focus:border-blue-500 transition-colors" rows="4" value={broadcastMessage} onChange={(e) => setBroadcastMessage(e.target.value)} placeholder="Type global notification..."></textarea>
+                                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit" className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black text-lg">Emit Broadcast Signal</motion.button>
+                            </form>
+                        </div>
+                    </div>
+                </motion.div>
+            )}
+
+            {(user.role === 'customer' || (user.role === 'provider' && user.isProviderApproved)) && (
+                <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mt-8">
+                    <h2 className="text-3xl font-black mb-8 text-gray-900 flex items-center gap-3">
+                        <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center"><FileText size={24} /></div>
+                        Booking Ledger
+                    </h2>
+                    
+                    <div className="bg-white rounded-[2rem] shadow-2xl border border-gray-100 overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-gray-50/50 border-b border-gray-100">
+                                        <th className="p-6 text-xs font-black text-gray-400 uppercase tracking-widest">Service Item</th>
+                                        <th className="p-6 text-xs font-black text-gray-400 uppercase tracking-widest hidden md:table-cell">Schedule</th>
+                                        <th className="p-6 text-xs font-black text-gray-400 uppercase tracking-widest text-center">Status</th>
+                                        <th className="p-6 text-xs font-black text-gray-400 uppercase tracking-widest">Total cost</th>
+                                        <th className="p-6 text-xs font-black text-gray-400 uppercase tracking-widest text-right">Controls</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {displayedBookings.map(booking => (
+                                        <motion.tr layout key={booking._id} className="group hover:bg-blue-50/30 transition-colors">
+                                            <td className="p-6">
+                                                <div className="flex flex-col">
+                                                    <span className="font-black text-gray-800 group-hover:text-blue-600 transition-colors">{booking.serviceId?.serviceName}</span>
+                                                    <span className="text-xs text-gray-400 font-bold uppercase md:hidden">{new Date(booking.date).toLocaleDateString()}</span>
+                                                </div>
+                                            </td>
+                                            <td className="p-6 hidden md:table-cell">
+                                                <span className="text-sm font-bold text-gray-600">{new Date(booking.date).toLocaleDateString()}</span>
+                                            </td>
+                                            <td className="p-6 text-center">
+                                                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm ${
+                                                    booking.status === 'Completed' ? 'bg-green-100 text-green-700 border border-green-200' :
+                                                    booking.status === 'Pending' ? 'bg-orange-100 text-orange-700 border border-orange-200 animate-pulse' :
+                                                    booking.status === 'Paid' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
+                                                    'bg-gray-100 text-gray-600'
+                                                }`}>{booking.status}</span>
+                                            </td>
+                                            <td className="p-6 font-black text-gray-900">₹{booking.serviceId?.price}</td>
+                                            <td className="p-6">
+                                                <div className="flex justify-end gap-2 items-center">
+                                                    {user.role === 'customer' && booking.status === 'Pending' && (
+                                                        <motion.button whileHover={{ scale: 1.1 }} onClick={() => handlePay(booking._id, booking.serviceId?.price)} className="p-3 bg-green-600 text-white rounded-xl shadow-lg shadow-green-100 hover:bg-green-700"><Wallet size={18} /></motion.button>
+                                                    )}
+                                                    
+                                                    {user.role === 'provider' && (
+                                                        <select value={booking.status} onChange={(e) => handleUpdateBookingStatus(booking._id, e.target.value)} className="bg-gray-50 border-none text-xs font-black rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-600">
+                                                            <option value="Pending">Pending</option>
+                                                            <option value="Accepted">Accepted</option>
+                                                            <option value="OnTheWay">On The Way</option>
+                                                            <option value="In Progress">In Progress</option>
+                                                            <option value="Paid">Paid</option>
+                                                            <option value="Completed">Completed</option>
+                                                            <option value="Cancelled">Cancelled</option>
+                                                        </select>
+                                                    )}
+
+                                                    {['Accepted', 'OnTheWay', 'In Progress', 'Paid'].includes(booking.status) && (
+                                                        <motion.button whileHover={{ scale: 1.1 }} onClick={() => setActiveChatBooking(booking)} className="p-3 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 relative">
+                                                            <MessageSquare size={18} />
+                                                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></div>
+                                                        </motion.button>
+                                                    )}
+
+                                                    {user.role === 'customer' && ['Accepted', 'OnTheWay'].includes(booking.status) && (
+                                                        <motion.button whileHover={{ scale: 1.1 }} onClick={() => { setSelectedBookingId(booking._id); setShowScanner(true); }} className="p-3 bg-black text-white rounded-xl shadow-lg hover:bg-gray-800"><QrCode size={18} /></motion.button>
+                                                    )}
+
+                                                    {user.role === 'customer' && booking.status === 'Completed' && (
+                                                        <motion.button whileHover={{ scale: 1.1 }} onClick={() => { setSelectedBookingForReview(booking._id); setShowReviewModal(true); }} className="p-3 bg-yellow-400 text-white rounded-xl shadow-lg hover:bg-yellow-500"><Star size={18} /></motion.button>
+                                                    )}
+
+                                                    <motion.button whileHover={{ scale: 1.1 }} onClick={() => generateInvoice(booking)} className="p-3 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-100 hover:bg-blue-700 focus:ring-2 ring-blue-300"><FileText size={18} /></motion.button>
+                                                    
+                                                    {user.role === 'customer' && booking.status !== 'Cancelled' && (
+                                                        <button onClick={() => { setSelectedBookingForComplaint(booking._id); setShowComplaintModal(true); }} className="text-red-500 hover:text-red-700 transition-colors tooltip flex items-center justify-center p-3" title="Report Issue">
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </motion.tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* Desktop Live Maps Section */}
+                    {bookings.some(b => b.status === 'OnTheWay') && (
+                        <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mt-12">
+                            <h2 className="text-2xl font-black mb-6 flex items-center gap-2"><div className="w-2 h-2 bg-red-500 rounded-full animate-ping"></div> Live Fleet Matrix</h2>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                {bookings.filter(b => b.status === 'OnTheWay').map(booking => (
+                                    <div key={booking._id} className="bg-white p-4 rounded-[2rem] shadow-xl border border-blue-50">
+                                        <div className="flex justify-between items-center mb-4 px-2">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 bg-blue-600 text-white rounded-2xl flex items-center justify-center font-black">🚙</div>
+                                                <div>
+                                                    <h4 className="font-black text-gray-800 text-sm leading-tight">{booking.serviceId?.serviceName}</h4>
+                                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{user.role === 'customer' ? 'Provider en route' : 'Sharing your location'}</p>
+                                                </div>
+                                            </div>
+                                            <span className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full font-black uppercase tracking-tighter shadow-inner">Active Relay</span>
+                                        </div>
+                                        <LiveTrackingMap providerLocation={liveLocations[booking._id]} providerName="Service Pro" />
+                                    </div>
+                                ))}
+                            </div>
+                        </motion.div>
+                    )}
+                </motion.div>
+            )}
+
+            <AnimatePresence>
+                {showScanner && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 backdrop-blur-md flex justify-center items-center z-[2000] p-4">
+                        <motion.div initial={{ scale: 0.9, y: 30 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 30 }} className="bg-white p-8 rounded-[2.5rem] w-full max-w-md shadow-2xl relative">
+                            <button onClick={() => setShowScanner(false)} className="absolute top-6 right-6 text-gray-400 hover:text-black transition-colors"><X size={24} /></button>
+                            <div className="text-center mb-8">
+                                <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-4"><QrCode size={32} /></div>
+                                <h2 className="text-2xl font-black text-gray-900 leading-tight">Identity Hub</h2>
+                                <p className="text-sm text-gray-500 mt-2">Scan the provider's screen to unlock service</p>
+                            </div>
+                            <div className="rounded-3xl overflow-hidden border-4 border-blue-50 shadow-inner bg-black">
+                                <QRScanner onScan={handleScan} />
+                            </div>
+                            <button onClick={() => setShowScanner(false)} className="mt-8 w-full bg-red-50 text-red-600 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-red-100 transition-colors">Abort Access</button>
+                        </motion.div>
+                    </motion.div>
+                )}
+
+                {showComplaintModal && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 backdrop-blur-md flex justify-center items-center z-[2000] p-4">
+                        <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="bg-white p-8 rounded-[2.5rem] w-full max-w-md shadow-2xl overflow-hidden">
+                            <h2 className="text-2xl font-black text-red-600 mb-2 flex items-center gap-2 px-1"><AlertTriangle size={24} /> Report Incident</h2>
+                            <p className="text-sm text-gray-500 mb-6 px-1">Our L1-Support team will review this investigation within 24 hours.</p>
+                            <textarea className="w-full bg-red-50 border-2 border-red-100 p-5 rounded-3xl text-red-900 outline-none focus:border-red-500 transition-colors font-semibold" rows="4" value={complaintText} onChange={(e) => setComplaintText(e.target.value)} placeholder="Explain the issue in detail..."></textarea>
+                            <div className="flex gap-4 mt-8">
+                                <button onClick={() => setShowComplaintModal(false)} className="flex-1 bg-gray-100 text-gray-600 py-4 rounded-2xl font-black text-sm uppercase">Cancel</button>
+                                <button onClick={handleSubmitComplaint} className="flex-2 bg-red-600 text-white py-4 px-8 rounded-2xl font-black text-sm uppercase shadow-lg shadow-red-200">Submit Report</button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+
+                {showReviewModal && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 backdrop-blur-md flex justify-center items-center z-[2000] p-4">
+                        <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="bg-white p-10 rounded-[3rem] w-full max-w-md shadow-2xl text-center">
+                            <div className="w-20 h-20 bg-yellow-50 text-yellow-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner"><Star size={40} fill="currentColor" /></div>
+                            <h2 className="text-3xl font-black text-gray-900 mb-2 leading-tight">Rate Your Pro</h2>
+                            <p className="text-sm text-gray-500 mb-8 mt-1">Help the community by sharing your experience!</p>
+                            <div className="flex justify-center gap-3 text-4xl mb-8">
+                                {[1, 2, 3, 4, 5].map((s) => (
+                                    <motion.button key={s} whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.9 }} onClick={() => setRating(s)} className={`${s <= rating ? 'text-yellow-400' : 'text-gray-200'} transition-colors drop-shadow-sm`}>★</motion.button>
+                                ))}
+                            </div>
+                            <textarea className="w-full bg-gray-50 border-2 border-transparent p-5 rounded-3xl text-gray-800 outline-none focus:bg-white focus:border-yellow-400 focus:ring-4 focus:ring-yellow-50 transition-all font-semibold" rows="3" value={reviewComment} onChange={(e) => setReviewComment(e.target.value)} placeholder="What stood out the most?"></textarea>
+                            <div className="flex flex-col gap-3 mt-8">
+                                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={handleSubmitReview} className="w-full bg-yellow-400 text-white py-5 rounded-2xl font-black text-lg shadow-lg shadow-yellow-100">Post Public Review</motion.button>
+                                <button onClick={() => setShowReviewModal(false)} className="text-gray-400 text-xs font-black uppercase tracking-widest hover:text-gray-600 transition-colors py-2">Skip for now</button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+                
+                {activeChatBooking && (
+                    <ChatModal booking={activeChatBooking} onClose={() => setActiveChatBooking(null)} />
+                )}
+            </AnimatePresence>
+
+            <ReviewsList reviews={[]} />
+
+        </motion.div>
     );
 };
 

@@ -5,14 +5,14 @@ import L from 'leaflet';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
 // A better car SVG
-const carIcon = new L.Icon({
+const carIcon = typeof window !== 'undefined' ? new L.Icon({
     iconUrl: 'https://cdn-icons-png.flaticon.com/512/3774/3774278.png', // Premium car icon
     iconSize: [40, 40],
     iconAnchor: [20, 20],
     popupAnchor: [0, -20],
     shadowUrl: markerShadow,
     shadowSize: [41, 41],
-});
+}) : null;
 
 // Component to dynamically recenter the map when coordinates change
 const RecenterMap = ({ lat, lng }) => {
@@ -32,6 +32,8 @@ const LiveTrackingMap = ({ providerLocation, providerName = "Provider" }) => {
     const position = isLive
         ? [providerLocation.lat, providerLocation.lng]
         : defaultPosition;
+
+    if (typeof window === 'undefined') return null;
 
     return (
         <div className="w-full h-64 md:h-96 rounded-2xl overflow-hidden shadow-inner border border-gray-200 relative group z-0">
@@ -55,19 +57,7 @@ const LiveTrackingMap = ({ providerLocation, providerName = "Provider" }) => {
                 {isLive && (
                     <>
                         <RecenterMap lat={providerLocation.lat} lng={providerLocation.lng} />
-<<<<<<< HEAD
-                        <Marker position={position} icon={carIcon}>
-=======
-                        <Marker 
-                            position={position}
-                            icon={L.divIcon({
-                                className: 'custom-car-marker',
-                                html: '<div class="flex items-center justify-center w-10 h-10 bg-white rounded-full shadow-lg border-2 border-blue-600 outline-none"><span class="text-2xl pt-1">🚙</span></div>',
-                                iconSize: [40, 40],
-                                iconAnchor: [20, 20]
-                            })}
-                        >
->>>>>>> 1dbdbf3 (Implement real-time notification system and dashboard UI fixes)
+                        <Marker position={position} icon={carIcon || undefined}>
                             <Popup>
                                 <div className="font-bold text-blue-600">{providerName}</div>
                                 <div className="text-xs text-gray-500">Currently En Route!</div>
