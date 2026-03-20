@@ -1,5 +1,6 @@
 const supabase = require('../config/supabaseClient');
 const sendEmail = require('../utils/sendEmail');
+const { createNotification } = require('./notificationController');
 
 // @desc    Create new booking
 // @route   POST /api/bookings
@@ -58,6 +59,18 @@ const createBooking = async (req, res) => {
             console.error('Failed to send email notification to provider:', emailError);
         }
 
+        // 4. Create In-App Notification for Provider
+        const notification = await createNotification(
+            service.provider_id,
+            'booking',
+            `New Booking Request: ${service.service_name}`,
+            '/provider/dashboard'
+        );
+
+        if (notification) {
+            req.app.get('io').to(service.provider_id).emit('new_notification', notification);
+        }
+
         res.status(201).json({
             ...booking,
             _id: booking.id
@@ -95,11 +108,16 @@ const getBookings = async (req, res) => {
         const mappedBookings = bookings.map(b => ({
             ...b,
             _id: b.id,
-            serviceId: b.serviceId ? { ...b.serviceId, _id: b.serviceId.id } : null,
+            serviceId: b.serviceId ? { 
+                ...b.serviceId, 
+                _id: b.serviceId.id,
+                serviceName: b.serviceId.service_name 
+            } : null,
             providerId: b.providerId ? { ...b.providerId, _id: b.providerId.id } : null,
             customerId: b.customerId ? { ...b.customerId, _id: b.customerId.id } : null,
         }));
 
+        console.log('[DEBUG] First Mapped Booking ServiceId:', JSON.stringify(mappedBookings[0]?.serviceId, null, 2));
         res.json(mappedBookings);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -143,6 +161,18 @@ const updateBookingStatus = async (req, res) => {
             ...updatedBooking,
             _id: updatedBooking.id
         });
+
+        // Notify Customer about Status Change
+        const notification = await createNotification(
+            updatedBooking.customer_id,
+            'booking',
+            `Your booking status for ${req.body.serviceName || 'service'} has been updated to: ${status}`,
+            '/customer/dashboard'
+        );
+
+        if (notification) {
+            req.app.get('io').to(updatedBooking.customer_id).emit('new_notification', notification);
+        }
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

@@ -45,6 +45,10 @@ const bookingRoutes = require('./routes/bookingRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const complaintRoutes = require('./routes/complaintRoutes');
+<<<<<<< HEAD
+=======
+const reviewRoutes = require('./routes/reviewRoutes');
+>>>>>>> fa703a5 (Complete notification system (Backend + Frontend))
 const notificationRoutes = require('./routes/notificationRoutes');
 
 app.use('/api/auth', authRoutes);
@@ -53,8 +57,14 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/complaints', complaintRoutes);
+<<<<<<< HEAD
+=======
+app.use('/api/reviews', reviewRoutes);
+>>>>>>> fa703a5 (Complete notification system (Backend + Frontend))
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/messages', require('./routes/messageRoutes'));
+
+
 
 app.get('/', (req, res) => {
     res.send('Service at Your Home API is running...');
@@ -104,6 +114,9 @@ io.on('connection', (socket) => {
 });
 
 // Old MongoDB Connection logic removed - Migrating to Supabase PostgreSQL
+
+const startReminderJob = require('./jobs/reminderJob');
+startReminderJob();
 
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
