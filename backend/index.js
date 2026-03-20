@@ -45,10 +45,7 @@ const bookingRoutes = require('./routes/bookingRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const complaintRoutes = require('./routes/complaintRoutes');
-<<<<<<< HEAD
-=======
 const reviewRoutes = require('./routes/reviewRoutes');
->>>>>>> fa703a5 (Complete notification system (Backend + Frontend))
 const notificationRoutes = require('./routes/notificationRoutes');
 
 app.use('/api/auth', authRoutes);
@@ -57,10 +54,7 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/complaints', complaintRoutes);
-<<<<<<< HEAD
-=======
 app.use('/api/reviews', reviewRoutes);
->>>>>>> fa703a5 (Complete notification system (Backend + Frontend))
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/messages', require('./routes/messageRoutes'));
 
