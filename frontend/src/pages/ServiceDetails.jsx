@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import AuthContext from '../context/AuthContext';
 import { toast } from 'react-toastify';
+import ReviewsList from '../components/ReviewsList';
 
 const ServiceDetails = () => {
     const { id } = useParams();
@@ -23,8 +24,8 @@ const ServiceDetails = () => {
     useEffect(() => {
         const fetchService = async () => {
             try {
-                const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services/${id}`);
-                setService(res.data);
+                const serviceRes = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/services/${id}`);
+                setService(serviceRes.data);
             } catch (error) {
                 console.error(error);
             } finally {
@@ -33,7 +34,6 @@ const ServiceDetails = () => {
         };
         fetchService();
     }, [id]);
-
 
     const handleBook = async (e) => {
         e.preventDefault();
@@ -78,7 +78,7 @@ const ServiceDetails = () => {
                 <p className="mb-4">Provider: {service.providerId?.name}</p>
             </div>
 
-            <div className="bg-gray-50 p-6 rounded-lg border">
+            <div className="bg-gray-50 p-6 rounded-lg border mb-8">
                 <h2 className="text-xl font-bold mb-4">Book This Service</h2>
                 <form onSubmit={handleBook} className="space-y-4">
                     <div>
@@ -120,6 +120,11 @@ const ServiceDetails = () => {
                         Confirm Booking
                     </button>
                 </form>
+            </div>
+
+            <div className="mt-12">
+                <h2 className="text-2xl font-bold mb-6 text-gray-800">Customer Feedback</h2>
+                <ReviewsList serviceId={id} />
             </div>
         </div>
     );

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
 import { FaUserCircle, FaBars, FaTimes } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
+import NotificationBell from './NotificationBell';
 
 const Navbar = () => {
     const { user, logout } = useContext(AuthContext);
@@ -57,6 +58,8 @@ const Navbar = () => {
                         ))}
                         {user && (
                             <div className="flex items-center gap-4 pl-4 border-l relative">
+                                <NotificationBell />
+                                <div className="h-6 w-px bg-gray-200"></div>
                                 <div className="relative">
                                     <button
                                         onClick={() => setIsProfileOpen(!isProfileOpen)}

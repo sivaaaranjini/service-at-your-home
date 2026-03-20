@@ -1,4 +1,5 @@
 import { useState, useEffect, useContext } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import AuthContext from '../context/AuthContext';
 import { toast } from 'react-toastify';
@@ -8,9 +9,9 @@ import ChatModal from '../components/ChatModal';
 import AnalyticsCharts from '../components/AnalyticsCharts';
 import LiveTrackingMap from '../components/LiveTrackingMap';
 import generateInvoice from '../utils/generateInvoice';
-import { motion, AnimatePresence } from 'framer-motion';
 import socket from '../utils/socket';
 import { MessageSquare, QrCode, AlertTriangle, FileText, Trash2, ShieldOff, PlusCircle, ArrowUpRight, Wallet, X, RotateCcw, XCircle } from 'lucide-react';
+import ReviewsList from '../components/ReviewsList';
 
 const Dashboard = () => {
     const { user } = useContext(AuthContext);
@@ -45,9 +46,16 @@ const Dashboard = () => {
     // Provider Pipeline Tab State
     const [activeTab, setActiveTab] = useState('New Requests');
 
+    // Review States
+    const [showReviewModal, setShowReviewModal] = useState(false);
+    const [selectedBookingForReview, setSelectedBookingForReview] = useState(null);
+    const [rating, setRating] = useState(5);
+    const [reviewComment, setReviewComment] = useState('');
+
     // Socket.io Listeners for Live Tracking
     useEffect(() => {
         socket.on('receive_location', (data) => {
+            console.log('[SOCKET] Received Live Location Update:', data);
             setLiveLocations(prev => ({
                 ...prev,
                 [data.bookingId]: { lat: data.lat, lng: data.lng }
@@ -94,7 +102,6 @@ const Dashboard = () => {
             if (activeTrips.length > 0) {
                 if (isSimulating) {
                     console.log("[GPS] Starting Simulation...");
-
                     // Try to get CURRENT location as base for simulation
                     navigator.geolocation.getCurrentPosition((pos) => {
                         const baseLat = pos.coords.latitude;
@@ -102,9 +109,11 @@ const Dashboard = () => {
                         let step = 0;
 
                         simInterval = setInterval(() => {
-                            // Move speed: ~100m per 2 seconds
+                            // Move speed: ~100m per 3 seconds
                             const lat = baseLat + (step * 0.0005);
                             const lng = baseLng + (step * 0.0005);
+                            
+                            toast(`📡 Broadcasting GPS... (Step ${step})`, { id: 'gps-ping' });
 
                             activeTrips.forEach(trip => {
                                 socket.emit('update_location', {
@@ -114,7 +123,7 @@ const Dashboard = () => {
                                 });
                             });
                             step++;
-                        }, 2000);
+                        }, 3000);
                     }, () => {
                         // Fallback if GPS denied: Use a city in India (e.g. Coimbatore center)
                         const baseLat = 11.0168;
@@ -123,11 +132,12 @@ const Dashboard = () => {
                         simInterval = setInterval(() => {
                             const lat = baseLat + (step * 0.0005);
                             const lng = baseLng + (step * 0.0005);
+                            toast(`📡 Broadcasting GPS... (Step ${step})`, { id: 'gps-ping' });
                             activeTrips.forEach(trip => {
                                 socket.emit('update_location', { bookingId: trip._id, lat, lng });
                             });
                             step++;
-                        }, 2000);
+                        }, 3000);
                     });
                 } else if ('geolocation' in navigator) {
                     watchId = navigator.geolocation.watchPosition(
@@ -384,6 +394,24 @@ const Dashboard = () => {
         }
     };
 
+    const handleSubmitReview = async () => {
+        try {
+            const config = { headers: { Authorization: `Bearer ${user.token}` } };
+            await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/reviews`, {
+                bookingId: selectedBookingForReview,
+                rating,
+                comment: reviewComment
+            }, config);
+            toast.success('Review submitted successfully!');
+            setShowReviewModal(false);
+            setReviewComment('');
+            setRating(5);
+            fetchBookings(); // Refresh to hide review button if implemented
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to submit review');
+        }
+    };
+
     const handleScan = async (scannedData) => {
         // scannedData should be Provider ID
         if (!selectedBookingId) return;
@@ -404,6 +432,13 @@ const Dashboard = () => {
     };
 
     if (loading) return <div className="p-8 text-center">Loading Dashboard...</div>;
+
+    const displayedBookings = user?.role === 'provider' ? bookings.filter(b => {
+        if (activeTab === 'New Requests') return b.status === 'Pending';
+        if (activeTab === 'Active Jobs') return ['Accepted', 'OnTheWay', 'In Progress', 'Paid'].includes(b.status);
+        if (activeTab === 'Past Jobs') return ['Completed', 'Cancelled', 'Refunded'].includes(b.status);
+        return true;
+    }) : bookings;
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-8">
@@ -490,9 +525,7 @@ const Dashboard = () => {
                                     You have not listed any services yet.
                                 </div>
                             )}
-                        </div>
-
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-10">
+                                             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-10">
                             <h2 className="text-xl font-bold mb-4">Add New Service</h2>
                             <form onSubmit={handleAddService} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
@@ -573,8 +606,7 @@ const Dashboard = () => {
                                 </button>
                             ))}
                         </div>
-                    </div>
-                </>
+     </div>
             )}
 
             {user.role === 'admin' && (
@@ -859,13 +891,24 @@ const Dashboard = () => {
                 </div>
             )}
 
-            {activeChatBooking && (
-                <ChatModal
-                    booking={activeChatBooking}
-                    onClose={() => setActiveChatBooking(null)}
-                />
-            )}
+            {showReviewModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+                    <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-2xl">
+                        <h2 className="text-2xl font-bold mb-4 text-gray-800">Rate Your Experience</h2>
+                        
+                        <div className="flex justify-center gap-2 mb-6 text-3xl">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                                <button
+                                    key={star}
+                                    onClick={() => setRating(star)}
+                                    className={`${star <= rating ? 'text-yellow-400' : 'text-gray-300'} hover:scale-110 transition-transform`}
+                                >
+                                    ★
+                                </button>
+                            ))}
+                        </div>
 
+<<<<<<< ours
 
             {/* Dashboard Control/Header Section adjustments for mobile */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -1127,6 +1170,17 @@ const Dashboard = () => {
                     <div className="p-12 text-center text-gray-400 italic">No activity found in this section.</div>
                 )}
             </div>
+
+            {/* Customer Feedback Section for Providers */}
+            {user.role === 'provider' && user.isProviderApproved && (
+                <div className="mt-12 bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+                    <h2 className="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-3">
+                        ⭐ Customer Feedback
+                        <span className="text-sm font-normal text-gray-400 bg-gray-50 px-3 py-1 rounded-full">Recent Reviews</span>
+                    </h2>
+                    <ReviewsList providerId={user._id} />
+                </div>
+            )}
         </div>
     );
 };

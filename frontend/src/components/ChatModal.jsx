@@ -1,9 +1,17 @@
+<<<<<<< HEAD
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import axios from 'axios';
+=======
+import React, { useState, useEffect, useContext, useRef } from 'react';
+>>>>>>> 1dbdbf3 (Implement real-time notification system and dashboard UI fixes)
 import AuthContext from '../context/AuthContext';
+import axios from 'axios';
 import { toast } from 'react-toastify';
 import socket from '../utils/socket';
+<<<<<<< HEAD
 
+=======
+>>>>>>> 1dbdbf3 (Implement real-time notification system and dashboard UI fixes)
 const ChatModal = ({ booking, onClose }) => {
     const { user } = useContext(AuthContext);
     const [messages, setMessages] = useState([]);

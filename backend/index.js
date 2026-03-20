@@ -20,6 +20,7 @@ const io = new Server(server, {
         credentials: true
     }
 });
+app.set('io', io);
 
 // Middleware
 app.use(express.json());
@@ -44,6 +45,7 @@ const bookingRoutes = require('./routes/bookingRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const complaintRoutes = require('./routes/complaintRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/services', serviceRoutes);
@@ -51,6 +53,7 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/complaints', complaintRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use('/api/messages', require('./routes/messageRoutes'));
 
 app.get('/', (req, res) => {
@@ -65,6 +68,12 @@ io.on('connection', (socket) => {
     socket.on('join_room', (bookingId) => {
         socket.join(bookingId);
         console.log(`User ${socket.id} joined room ${bookingId}`);
+    });
+
+    // Join a private room for the user to receive personal notifications
+    socket.on('join_user_room', (userId) => {
+        socket.join(userId);
+        console.log(`User ${socket.id} joined private room ${userId}`);
     });
 
     // Handle sending message

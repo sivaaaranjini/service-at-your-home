@@ -18,7 +18,8 @@ const carIcon = new L.Icon({
 const RecenterMap = ({ lat, lng }) => {
     const map = useMap();
     useEffect(() => {
-        map.setView([lat, lng]);
+        // Dynamically set both center and zoom level (16)
+        map.setView([lat, lng], 16);
     }, [lat, lng, map]);
     return null;
 };
@@ -35,7 +36,7 @@ const LiveTrackingMap = ({ providerLocation, providerName = "Provider" }) => {
     return (
         <div className="w-full h-64 md:h-96 rounded-2xl overflow-hidden shadow-inner border border-gray-200 relative group z-0">
             {!isLive && (
-                <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-[400] flex flex-col items-center justify-center">
+                <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-[9999] flex flex-col items-center justify-center pointer-events-none">
                     <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-3"></div>
                     <p className="text-gray-800 font-semibold drop-shadow-md">Awaiting Live GPS Signal from {providerName}...</p>
                 </div>
@@ -54,7 +55,19 @@ const LiveTrackingMap = ({ providerLocation, providerName = "Provider" }) => {
                 {isLive && (
                     <>
                         <RecenterMap lat={providerLocation.lat} lng={providerLocation.lng} />
+<<<<<<< HEAD
                         <Marker position={position} icon={carIcon}>
+=======
+                        <Marker 
+                            position={position}
+                            icon={L.divIcon({
+                                className: 'custom-car-marker',
+                                html: '<div class="flex items-center justify-center w-10 h-10 bg-white rounded-full shadow-lg border-2 border-blue-600 outline-none"><span class="text-2xl pt-1">🚙</span></div>',
+                                iconSize: [40, 40],
+                                iconAnchor: [20, 20]
+                            })}
+                        >
+>>>>>>> 1dbdbf3 (Implement real-time notification system and dashboard UI fixes)
                             <Popup>
                                 <div className="font-bold text-blue-600">{providerName}</div>
                                 <div className="text-xs text-gray-500">Currently En Route!</div>

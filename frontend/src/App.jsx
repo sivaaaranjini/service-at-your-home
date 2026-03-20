@@ -1,3 +1,4 @@
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/Navbar';
@@ -13,7 +14,6 @@ import VerifyOtp from './pages/VerifyOtp';
 import Services from './pages/Services';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
-import { useEffect } from 'react';
 import socket from './utils/socket';
 
 function App() {

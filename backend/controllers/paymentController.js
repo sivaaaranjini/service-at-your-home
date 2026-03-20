@@ -1,6 +1,7 @@
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const supabase = require('../config/supabaseClient');
+const { createNotification } = require('./notificationController');
 // Removed direct instantiation
 // Initialize Razorpay dynamically per function to allow process.env to load properly
 
@@ -49,7 +50,8 @@ const verifyPayment = async (req, res) => {
                 .from('bookings')
                 .select(`
                     id, 
-                    serviceId:service_id(price)
+                    provider_id,
+                    serviceId:service_id(price, service_name)
                 `)
                 .eq('id', bookingId)
                 .single();
@@ -83,6 +85,18 @@ const verifyPayment = async (req, res) => {
                 .eq('id', bookingId);
 
             if (bookingUpdateError) throw bookingUpdateError;
+
+            // Notify Provider about Payment
+            const notification = await createNotification(
+                booking.provider_id,
+                'payment',
+                `Service Paid: ${booking.serviceId?.service_name || 'Booking'}`,
+                '/provider/dashboard'
+            );
+
+            if (notification) {
+                req.app.get('io').to(booking.provider_id).emit('new_notification', notification);
+            }
 
             res.json({ message: 'Payment verified successfully' });
         } catch (error) {

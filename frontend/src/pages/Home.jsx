@@ -12,6 +12,8 @@ const Home = () => {
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
+    const [recentReviews, setRecentReviews] = useState([]);
+
     useEffect(() => {
         const fetchInitialData = async () => {
             try {
@@ -22,6 +24,10 @@ const Home = () => {
                 // Fetch Top Providers
                 const resProviders = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/top-providers`);
                 setTopProviders(resProviders.data);
+
+                // Fetch Recent Reviews
+                const resReviews = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/reviews/recent`);
+                setRecentReviews(resReviews.data);
             } catch (error) {
                 console.error('Error fetching data:', error);
             } finally {
@@ -255,33 +261,52 @@ const Home = () => {
                     )}
                 </div>
             </section>
-
             {/* 6. Live Customer Testimonials */}
             <section className="py-24 bg-white hidden sm:block">
                 <div className="max-w-7xl mx-auto px-4">
                     <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 mb-16">Stories from Our Customers</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {/* Static Reviews for aesthetics */}
-                        {[
-                            { name: "Sarah Jennings", service: "Plumbing Repair", text: "The plumber arrived within 30 minutes! Fixed a burst pipe that was ruining my kitchen floor. Absolute lifesavers and very professional." },
-                            { name: "Michael Chang", service: "Deep Cleaning", text: "Booked a post-renovation cleanup. The 3-person crew was incredibly thorough. The house smells amazing and every nook is spotless." },
-                            { name: "Priya Sharma", service: "Electrical Wiring", text: "Very transparent pricing. The electrician explained the faulty wiring safely, gave me a quote upfront, and finished the job perfectly." }
-                        ].map((review, i) => (
-                            <div key={i} className="bg-gray-50 p-8 rounded-2xl shadow-sm border border-gray-100 relative">
-                                <div className="text-yellow-400 text-xl mb-4">★★★★★</div>
-                                <p className="text-gray-700 italic mb-6 leading-relaxed">"{review.text}"</p>
-                                <div className="flex items-center">
-                                    <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center font-bold text-gray-500 mr-4">
-                                        {review.name.charAt(0)}
+                    
+                    {recentReviews.length === 0 ? (
+                        <div className="text-center py-12 bg-gray-50 rounded-2xl border border-gray-100 italic text-gray-400">
+                            Our customers are currently sharing their experiences. Check back soon!
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {recentReviews.map((review) => (
+                                <motion.div 
+                                    key={review._id} 
+                                    whileHover={{ y: -5 }}
+                                    className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-xl transition-all flex flex-col h-full"
+                                >
+                                    <div className="flex text-yellow-400 text-lg mb-4">
+                                        {[...Array(5)].map((_, i) => (
+                                            <span key={i}>{i < review.rating ? '★' : '☆'}</span>
+                                        ))}
                                     </div>
-                                    <div>
-                                        <h4 className="font-bold text-gray-900 text-sm">{review.name}</h4>
-                                        <p className="text-xs text-gray-500">{review.service}</p>
+                                    <div className="flex-grow">
+                                        <p className="text-gray-700 italic mb-6 leading-relaxed relative">
+                                            <span className="absolute -top-4 -left-2 text-4xl text-blue-100 font-serif">"</span>
+                                            {review.comment}
+                                            <span className="absolute -bottom-6 right-0 text-4xl text-blue-100 font-serif">"</span>
+                                        </p>
                                     </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                                    <div className="flex items-center mt-6 pt-6 border-t border-gray-50">
+                                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center font-bold text-white mr-4 shadow-md">
+                                            {review.customerId?.name?.charAt(0) || '?'}
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-gray-900 text-sm">{review.customerId?.name || 'Anonymous User'}</h4>
+                                            {review.serviceId && (
+                                                <p className="text-xs font-semibold text-blue-500 uppercase tracking-tighter">
+                                                    {review.serviceId.service_name}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </section>
 

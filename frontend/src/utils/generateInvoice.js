@@ -1,4 +1,4 @@
-import { jsPDF } from 'jspdf';
+import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 const generateInvoice = (booking) => {
@@ -54,9 +54,8 @@ const generateInvoice = (booking) => {
         footStyles: { fillColor: [243, 244, 246], textColor: [0, 0, 0], fontStyle: 'bold' }
     });
 
-    // Handle lastAutoTable safely (depends on plugin state)
-    const finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY) || 120;
-
+    // Footer Content Positioning
+    const finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY : 120;
     doc.setFontSize(10);
     doc.setTextColor(156, 163, 175);
     doc.text('Thank you for choosing Service At Your Home!', 14, finalY + 20);
