@@ -9,7 +9,7 @@ import AnalyticsCharts from '../components/AnalyticsCharts';
 import LiveTrackingMap from '../components/LiveTrackingMap';
 import generateInvoice from '../utils/generateInvoice';
 import socket from '../utils/socket';
-import { MessageSquare, QrCode, AlertTriangle, FileText, Trash2, ShieldOff, PlusCircle, ArrowUpRight, Wallet, X, RotateCcw, XCircle, Star } from 'lucide-react';
+import { LayoutDashboard, Users, MessageSquare, QrCode, ClipboardList, TriangleAlert, Star, CircleCheck, Clock, ShieldCheck, MapPin, User, Settings, LogOut, FileText, ShieldOff, CirclePlus, ArrowUpRight, CreditCard, X, RotateCcw, CircleX, Wallet, UserCheck, Trash2 } from 'lucide-react';
 import ReviewsList from '../components/ReviewsList';
 import ChatModal from '../components/ChatModal';
 
@@ -36,12 +36,21 @@ const Dashboard = () => {
     const [rating, setRating] = useState(5);
     const [reviewComment, setReviewComment] = useState('');
     const [isSimulating, setIsSimulating] = useState(false);
+    const [customerLocations, setCustomerLocations] = useState({});
 
     useEffect(() => {
         socket.on('receive_location', (data) => {
+            console.log('[DEBUG] Received Provider Location:', data);
             setLiveLocations(prev => ({ ...prev, [data.bookingId]: { lat: data.lat, lng: data.lng } }));
         });
-        return () => { socket.off('receive_location'); };
+        socket.on('receive_customer_location', (data) => {
+            console.log('[DEBUG] Received Customer Location:', data);
+            setCustomerLocations(prev => ({ ...prev, [data.bookingId]: { lat: data.lat, lng: data.lng } }));
+        });
+        return () => { 
+            socket.off('receive_location'); 
+            socket.off('receive_customer_location');
+        };
     }, []);
 
     useEffect(() => {
@@ -79,6 +88,16 @@ const Dashboard = () => {
                         activeTrips.forEach(trip => { socket.emit('update_location', { bookingId: trip._id, lat: p.coords.latitude, lng: p.coords.longitude }); });
                     });
                 }
+            }
+        } else if (user?.role === 'customer') {
+            // Customer shares their home/live location when provider is coming or job is active
+            const activeBookings = bookings.filter(b => ['Accepted', 'OnTheWay', 'In Progress'].includes(b.status));
+            if (activeBookings.length > 0 && 'geolocation' in navigator) {
+                watchId = navigator.geolocation.watchPosition((p) => {
+                    activeBookings.forEach(b => {
+                        socket.emit('update_customer_location', { bookingId: b._id, lat: p.coords.latitude, lng: p.coords.longitude });
+                    });
+                }, (err) => console.error("Customer Geo Error:", err), { enableHighAccuracy: true });
             }
         }
         return () => { if (watchId) navigator.geolocation.clearWatch(watchId); if (simInterval) clearInterval(simInterval); };
@@ -239,30 +258,30 @@ const Dashboard = () => {
     return (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-7xl mx-auto px-4 py-8">
             <div className="flex justify-between items-center mb-12">
-                <motion.h1 initial={{ x: -20 }} animate={{ x: 0 }} className="text-4xl font-black text-gray-900 tracking-tight">
-                    {user.role === 'customer' && 'My Bookings'}
-                    {user.role === 'provider' && 'My Jobs'}
-                    {user.role === 'admin' && 'Admin Dashboard'}
+                <motion.h1 initial={{ x: -20 }} animate={{ x: 0 }} className="text-2xl font-bold text-gray-800 tracking-tight font-sans">
+                    {user?.role === 'customer' && 'My Bookings'}
+                    {user?.role === 'provider' && 'My Jobs'}
+                    {user?.role === 'admin' && 'Admin Dashboard'}
                 </motion.h1>
                 <div className="bg-blue-50 px-4 py-2 rounded-full flex items-center gap-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
-                    <span className="text-sm font-bold text-blue-700 uppercase tracking-widest">{user.role}</span>
+                    <span className="text-sm font-bold text-blue-700 uppercase tracking-widest">{user?.role}</span>
                 </div>
             </div>
 
-            {user.role === 'admin' && <AnalyticsCharts bookings={bookings} role={user.role} token={user.token} />}
+            {user?.role === 'admin' && <AnalyticsCharts bookings={bookings} role={user?.role} token={user?.token} />}
 
-            {user.role === 'provider' && user.isProviderApproved && (
+            {user?.role === 'provider' && user?.isProviderApproved && (
                 <div className="mb-12">
-                    <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="bg-gradient-to-br from-green-500 to-emerald-700 rounded-3xl p-8 mb-10 text-white shadow-2xl flex flex-col md:flex-row justify-between items-center gap-8 border-4 border-white">
+                    <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-8 mb-10 text-white shadow-lg flex flex-col md:flex-row justify-between items-center gap-8">
                         <div>
-                            <p className="text-xs font-bold opacity-80 uppercase tracking-widest mb-1">Available Balance</p>
-                            <h3 className="text-6xl font-black">₹{bookings.filter(b => b.status === 'Completed').reduce((sum, b) => sum + (b.serviceId?.price || 0), 0).toLocaleString()}</h3>
+                            <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest mb-1">Available Balance</p>
+                            <h3 className="text-5xl font-bold">₹{bookings.filter(b => b.status === 'Completed').reduce((sum, b) => sum + (b.serviceId?.price || 0), 0).toLocaleString()}</h3>
                         </div>
-                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => toast.info('Payout requests are processed on the 1st of every month.')} className="bg-white text-green-700 font-black px-10 py-5 rounded-2xl shadow-xl hover:bg-gray-50 transition-colors">Request Payout</motion.button>
+                        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => toast.info('Payout requests are processed on the 1st of every month.')} className="bg-white text-emerald-600 font-bold px-8 py-3.5 rounded-lg shadow-md hover:bg-gray-50 transition-colors">Request Payout</motion.button>
                     </motion.div>
 
-                    <h2 className="text-2xl font-black mb-6 flex items-center gap-2 text-gray-800"><PlusCircle size={28} className="text-blue-600" /> Offering New Service</h2>
+                    <h2 className="text-2xl font-black mb-6 flex items-center gap-2 text-gray-800"><CirclePlus size={28} className="text-blue-600" /> Offering New Service</h2>
                     <motion.form initial={{ opacity: 0 }} animate={{ opacity: 1 }} onSubmit={handleAddService} className="bg-white p-8 rounded-3xl shadow-xl mb-12 grid grid-cols-1 md:grid-cols-2 gap-6 border border-gray-100">
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-gray-400 uppercase ml-1">Service Title</label>
@@ -323,18 +342,18 @@ const Dashboard = () => {
                         <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center"><Wallet size={24} /></div>
                         Job Pipeline
                     </h2>
-                    <div className="flex bg-gray-100 p-1.5 rounded-2xl w-fit mb-8 shadow-inner">
+                    <div className="flex bg-gray-100 p-1 rounded-xl w-fit mb-8 shadow-inner">
                         {['New Requests', 'Active Jobs', 'Past Jobs'].map(tab => (
-                            <button key={tab} onClick={() => setActiveTab(tab)} className={`py-2.5 px-6 rounded-xl text-sm font-black transition-all ${activeTab === tab ? 'bg-white text-blue-600 shadow-md transform scale-105' : 'text-gray-500 hover:text-gray-700'}`}>{tab}</button>
+                            <button key={tab} onClick={() => setActiveTab(tab)} className={`py-2 px-6 rounded-lg text-sm font-bold transition-all ${activeTab === tab ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>{tab}</button>
                         ))}
                     </div>
                 </div>
             )}
 
-            {user.role === 'admin' && (
+            {user?.role === 'admin' && (
                 <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="space-y-12 mb-16">
                     <section>
-                        <h2 className="text-2xl font-black mb-6 flex items-center gap-2 text-red-600"><AlertTriangle /> Pending Approvals</h2>
+                        <h2 className="text-2xl font-black mb-6 flex items-center gap-2 text-red-600"><TriangleAlert /> Pending Approvals</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {unapprovedProviders.map(p => (
                                 <motion.div layout id={`provider-${p._id}`} key={p._id} className="p-6 bg-white rounded-3xl shadow-lg border-2 border-orange-50 flex flex-col gap-4 relative overflow-hidden group">
@@ -353,7 +372,9 @@ const Dashboard = () => {
                         <div className="bg-white p-8 rounded-3xl shadow-xl border border-gray-100">
                             <h2 className="text-2xl font-black mb-6 flex items-center gap-2 text-red-500"><ShieldOff /> Active Disputes</h2>
                             <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
-                                {complaints.map(c => (
+                                {complaints.length === 0 ? (
+                                    <p className="text-gray-500 italic text-center py-10">No active disputes at this time.</p>
+                                ) : complaints.map(c => (
                                     <div key={c._id} className="p-5 bg-red-50 rounded-2xl border-l-8 border-red-500">
                                         <p className="font-black text-red-900 mb-1">Issue reported by Customer</p>
                                         <p className="text-sm text-red-700 leading-relaxed mb-4">{c.description}</p>
@@ -375,92 +396,183 @@ const Dashboard = () => {
                             </form>
                         </div>
                     </div>
+
+                    <div className="bg-white p-8 rounded-3xl shadow-xl border border-gray-100">
+                        <h2 className="text-2xl font-black mb-8 flex items-center gap-3">
+                            <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center"><Users size={24} /></div>
+                            User Oversight
+                        </h2>
+                        
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
+                            {/* Customers Table */}
+                            <div>
+                                <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-700">All Customers</h3>
+                                <div className="overflow-x-auto bg-gray-50 rounded-2xl p-4 border border-gray-100 shadow-inner">
+                                    <table className="w-full text-left">
+                                        <thead>
+                                            <tr className="border-b border-gray-200">
+                                                <th className="pb-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Name</th>
+                                                <th className="pb-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {allUsers.filter(u => u.role === 'customer').map(u => (
+                                                <tr key={u._id} className="hover:bg-white group transition-colors">
+                                                    <td className="py-3 px-1 text-sm">
+                                                        <p className="font-bold text-gray-800 leading-tight">{u.name}</p>
+                                                        <p className="text-[10px] text-gray-400 font-medium">{u.email}</p>
+                                                    </td>
+                                                    <td className="py-3 px-1 text-right">
+                                                        <button onClick={() => handleDeleteUser(u._id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* Providers Table */}
+                            <div>
+                                <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-700">Service Providers</h3>
+                                <div className="overflow-x-auto bg-gray-50 rounded-2xl p-4 border border-gray-100 shadow-inner">
+                                    <table className="w-full text-left">
+                                        <thead>
+                                            <tr className="border-b border-gray-200">
+                                                <th className="pb-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Provider</th>
+                                                <th className="pb-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Status</th>
+                                                <th className="pb-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {allUsers.filter(u => u.role === 'provider').map(u => (
+                                                <tr key={u._id} className="hover:bg-white group transition-colors">
+                                                    <td className="py-3 px-1 text-sm">
+                                                        <p className="font-bold text-gray-800 leading-tight">{u.name}</p>
+                                                        <p className="text-[10px] text-gray-400 font-medium">{u.email}</p>
+                                                    </td>
+                                                    <td className="py-3 px-1">
+                                                        {u.isProviderApproved ? (
+                                                            <span className="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-1 rounded-full flex items-center w-fit gap-1">
+                                                                <UserCheck size={10} /> Verified
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-[10px] bg-orange-100 text-orange-700 font-bold px-2 py-1 rounded-full w-fit block">Pending</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="py-3 px-1 text-right">
+                                                        <button onClick={() => handleDeleteUser(u._id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </motion.div>
             )}
 
-            {(user.role === 'customer' || (user.role === 'provider' && user.isProviderApproved)) && (
+            {(user?.role === 'customer' || user?.role === 'admin' || (user?.role === 'provider' && user?.isProviderApproved)) && (
                 <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mt-8">
                     <h2 className="text-3xl font-black mb-8 text-gray-900 flex items-center gap-3">
                         <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center"><FileText size={24} /></div>
                         Booking Ledger
                     </h2>
                     
-                    <div className="bg-white rounded-[2rem] shadow-2xl border border-gray-100 overflow-hidden">
+                    <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="bg-gray-50/50 border-b border-gray-100">
-                                        <th className="p-6 text-xs font-black text-gray-400 uppercase tracking-widest">Service Item</th>
-                                        <th className="p-6 text-xs font-black text-gray-400 uppercase tracking-widest hidden md:table-cell">Schedule</th>
-                                        <th className="p-6 text-xs font-black text-gray-400 uppercase tracking-widest text-center">Status</th>
-                                        <th className="p-6 text-xs font-black text-gray-400 uppercase tracking-widest">Total cost</th>
-                                        <th className="p-6 text-xs font-black text-gray-400 uppercase tracking-widest text-right">Controls</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-50">
-                                    {displayedBookings.map(booking => (
-                                        <motion.tr layout key={booking._id} className="group hover:bg-blue-50/30 transition-colors">
-                                            <td className="p-6">
-                                                <div className="flex flex-col">
-                                                    <span className="font-black text-gray-800 group-hover:text-blue-600 transition-colors">{booking.serviceId?.serviceName}</span>
-                                                    <span className="text-xs text-gray-400 font-bold uppercase md:hidden">{new Date(booking.date).toLocaleDateString()}</span>
-                                                </div>
-                                            </td>
-                                            <td className="p-6 hidden md:table-cell">
-                                                <span className="text-sm font-bold text-gray-600">{new Date(booking.date).toLocaleDateString()}</span>
-                                            </td>
-                                            <td className="p-6 text-center">
-                                                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm ${
-                                                    booking.status === 'Completed' ? 'bg-green-100 text-green-700 border border-green-200' :
-                                                    booking.status === 'Pending' ? 'bg-orange-100 text-orange-700 border border-orange-200 animate-pulse' :
-                                                    booking.status === 'Paid' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
-                                                    'bg-gray-100 text-gray-600'
-                                                }`}>{booking.status}</span>
-                                            </td>
-                                            <td className="p-6 font-black text-gray-900">₹{booking.serviceId?.price}</td>
-                                            <td className="p-6">
-                                                <div className="flex justify-end gap-2 items-center">
-                                                    {user.role === 'customer' && booking.status === 'Pending' && (
-                                                        <motion.button whileHover={{ scale: 1.1 }} onClick={() => handlePay(booking._id, booking.serviceId?.price)} className="p-3 bg-green-600 text-white rounded-xl shadow-lg shadow-green-100 hover:bg-green-700"><Wallet size={18} /></motion.button>
-                                                    )}
-                                                    
-                                                    {user.role === 'provider' && (
-                                                        <select value={booking.status} onChange={(e) => handleUpdateBookingStatus(booking._id, e.target.value)} className="bg-gray-50 border-none text-xs font-black rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-600">
-                                                            <option value="Pending">Pending</option>
-                                                            <option value="Accepted">Accepted</option>
-                                                            <option value="OnTheWay">On The Way</option>
-                                                            <option value="In Progress">In Progress</option>
-                                                            <option value="Paid">Paid</option>
-                                                            <option value="Completed">Completed</option>
-                                                            <option value="Cancelled">Cancelled</option>
-                                                        </select>
-                                                    )}
+                                        <th className="p-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">SERVICE</th>
+                                        <th className="p-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">DATE & TIME</th>
+                                        <th className="p-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">STATUS</th>
+                                        <th className="p-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">AMOUNT</th>
+                                <th className="p-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">ACTION</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {displayedBookings.map(booking => (
+                                <tr key={booking._id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/30 transition-colors">
+                                    <td className="p-4 align-top">
+                                        <div className="flex flex-col">
+                                            <span className="font-bold text-gray-800 text-sm">{booking.serviceId?.serviceName || 'Unknown Service'}</span>
+                                            <span className="text-xs text-gray-400 font-medium">{booking.serviceId?.category || 'General'}</span>
+                                        </div>
+                                    </td>
+                                    <td className="p-4 align-top">
+                                        <div className="flex flex-col text-xs font-semibold text-gray-600">
+                                            <span>{new Date(booking.date).toLocaleDateString()}</span>
+                                            <span className="text-gray-400 font-medium">{booking.time || '00:00'}</span>
+                                        </div>
+                                    </td>
+                                    <td className="p-4 align-top text-center">
+                                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold ${
+                                            booking.status === 'Completed' ? 'bg-green-100 text-green-700' :
+                                            booking.status === 'Pending' ? 'bg-orange-100 text-orange-700' :
+                                            ['In Progress', 'OnTheWay', 'Accepted'].includes(booking.status) ? 'bg-blue-50 text-blue-600' :
+                                            booking.status === 'Paid' ? 'bg-emerald-50 text-emerald-700' :
+                                            'bg-gray-100 text-gray-500'
+                                        }`}>{booking.status === 'Completed' ? 'Completed' : booking.status}</span>
+                                    </td>
+                                    <td className="p-4 align-top font-bold text-gray-700 text-sm">₹{booking.serviceId?.price}</td>
+                                    <td className="p-4 align-top">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            {user.role === 'customer' && (booking.status === 'Pending' || booking.status === 'Completed') && (
+                                                <button onClick={() => handlePay(booking._id, booking.serviceId?.price)} className="flex items-center gap-2 px-4 py-2 bg-[#00b894] text-white rounded-md text-xs font-bold hover:bg-[#00a383] transition shadow-sm whitespace-nowrap">
+                                                    <CreditCard size={14} strokeWidth={3} /> Pay Now
+                                                </button>
+                                            )}
+                                            
+                                            {user.role === 'provider' && (
+                                                <select value={booking.status} onChange={(e) => handleUpdateBookingStatus(booking._id, e.target.value)} className="bg-gray-50 border border-gray-200 text-xs font-bold rounded-md px-2 py-1 outline-none">
+                                                    <option value="Pending">Pending</option>
+                                                    <option value="Accepted">Accepted</option>
+                                                    <option value="OnTheWay">On The Way</option>
+                                                    <option value="In Progress">In Progress</option>
+                                                    <option value="Paid">Paid</option>
+                                                    <option value="Completed">Completed</option>
+                                                    <option value="Cancelled">Cancelled</option>
+                                                </select>
+                                            )}
 
-                                                    {['Accepted', 'OnTheWay', 'In Progress', 'Paid'].includes(booking.status) && (
-                                                        <motion.button whileHover={{ scale: 1.1 }} onClick={() => setActiveChatBooking(booking)} className="p-3 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 relative">
-                                                            <MessageSquare size={18} />
-                                                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></div>
-                                                        </motion.button>
-                                                    )}
+                                            {user.role === 'customer' && booking.status === 'Completed' && (
+                                                <button onClick={() => { setSelectedBookingForReview(booking._id); setShowReviewModal(true); }} className="flex items-center gap-2 px-4 py-2 bg-[#ffeaa7] text-[#d63031] rounded-md text-xs font-bold hover:bg-[#ffe082] transition shadow-sm whitespace-nowrap">
+                                                    <Star size={14} fill="#d63031" /> Review
+                                                </button>
+                                            )}
 
-                                                    {user.role === 'customer' && ['Accepted', 'OnTheWay'].includes(booking.status) && (
-                                                        <motion.button whileHover={{ scale: 1.1 }} onClick={() => { setSelectedBookingId(booking._id); setShowScanner(true); }} className="p-3 bg-black text-white rounded-xl shadow-lg hover:bg-gray-800"><QrCode size={18} /></motion.button>
-                                                    )}
+                                            <button onClick={() => generateInvoice(booking)} className="flex items-center gap-2 px-4 py-2 bg-white border border-[#81ecec] text-[#00cec9] rounded-md text-xs font-bold hover:bg-[#e0ffff] transition whitespace-nowrap">
+                                                <FileText size={14} /> Invoice
+                                            </button>
 
-                                                    {user.role === 'customer' && booking.status === 'Completed' && (
-                                                        <motion.button whileHover={{ scale: 1.1 }} onClick={() => { setSelectedBookingForReview(booking._id); setShowReviewModal(true); }} className="p-3 bg-yellow-400 text-white rounded-xl shadow-lg hover:bg-yellow-500"><Star size={18} /></motion.button>
-                                                    )}
+                                            {['Accepted', 'OnTheWay', 'In Progress', 'Paid', 'Completed'].includes(booking.status) && (
+                                                <button onClick={() => setActiveChatBooking(booking)} className="flex items-center gap-2 px-4 py-2 bg-white border border-[#a29bfe] text-[#6c5ce7] rounded-md text-xs font-bold hover:bg-[#f0f0ff] transition relative whitespace-nowrap">
+                                                    <MessageSquare size={14} /> Chat
+                                                    <div className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border border-white"></div>
+                                                </button>
+                                            )}
 
-                                                    <motion.button whileHover={{ scale: 1.1 }} onClick={() => generateInvoice(booking)} className="p-3 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-100 hover:bg-blue-700 focus:ring-2 ring-blue-300"><FileText size={18} /></motion.button>
-                                                    
-                                                    {user.role === 'customer' && booking.status !== 'Cancelled' && (
-                                                        <button onClick={() => { setSelectedBookingForComplaint(booking._id); setShowComplaintModal(true); }} className="text-red-500 hover:text-red-700 transition-colors tooltip flex items-center justify-center p-3" title="Report Issue">
-                                                            <Trash2 size={18} />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </motion.tr>
+                                            {user.role === 'customer' && ['Accepted', 'OnTheWay', 'In Progress'].includes(booking.status) && (
+                                                <button onClick={() => { setSelectedBookingId(booking._id); setShowScanner(true); }} className="flex items-center gap-2 px-4 py-2 bg-[#2d3436] text-white rounded-md text-xs font-bold hover:bg-black transition shadow-sm whitespace-nowrap">
+                                                    <QrCode size={14} /> Scan QR
+                                                </button>
+                                            )}
+
+                                            {user?.role === 'customer' && booking.status !== 'Cancelled' && (
+                                                <button onClick={() => { setSelectedBookingForComplaint(booking._id); setShowComplaintModal(true); }} className="flex items-center gap-1.5 px-3 py-1.5 border border-red-200 text-[#eb4d4b] rounded-md text-xs font-bold hover:bg-red-50 transition uppercase tracking-wider">
+                                                    <TriangleAlert size={12} className="text-orange-500" /> Report Issue
+                                                </button>
+                                            )}
+                                        </div>
+                                    </td>
+                                        </tr>
                                     ))}
                                 </tbody>
                             </table>
@@ -484,7 +596,12 @@ const Dashboard = () => {
                                             </div>
                                             <span className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full font-black uppercase tracking-tighter shadow-inner">Active Relay</span>
                                         </div>
-                                        <LiveTrackingMap providerLocation={liveLocations[booking._id]} providerName="Service Pro" />
+                                        <LiveTrackingMap 
+                                            providerLocation={liveLocations[booking._id]} 
+                                            customerLocation={customerLocations[booking._id]} 
+                                            providerName={booking.providerId?.name || "Provider"} 
+                                            userRole={user?.role}
+                                        />
                                     </div>
                                 ))}
                             </div>
@@ -514,7 +631,7 @@ const Dashboard = () => {
                 {showComplaintModal && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 backdrop-blur-md flex justify-center items-center z-[2000] p-4">
                         <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="bg-white p-8 rounded-[2.5rem] w-full max-w-md shadow-2xl overflow-hidden">
-                            <h2 className="text-2xl font-black text-red-600 mb-2 flex items-center gap-2 px-1"><AlertTriangle size={24} /> Report Incident</h2>
+                            <h2 className="text-2xl font-black text-red-600 mb-2 flex items-center gap-2 px-1"><TriangleAlert size={24} /> Report Incident</h2>
                             <p className="text-sm text-gray-500 mb-6 px-1">Our L1-Support team will review this investigation within 24 hours.</p>
                             <textarea className="w-full bg-red-50 border-2 border-red-100 p-5 rounded-3xl text-red-900 outline-none focus:border-red-500 transition-colors font-semibold" rows="4" value={complaintText} onChange={(e) => setComplaintText(e.target.value)} placeholder="Explain the issue in detail..."></textarea>
                             <div className="flex gap-4 mt-8">

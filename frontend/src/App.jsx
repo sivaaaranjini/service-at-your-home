@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Home from './pages/Home';
+import { NotificationProvider } from './context/NotificationContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import { ToastContainer, toast } from 'react-toastify';
@@ -35,25 +36,27 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <div className="flex flex-col min-h-screen">
-          <Navbar />
-          <div className="flex-grow">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/verify-otp" element={<VerifyOtp />} />
-              <Route path="/services" element={<Services />} />
-              <Route path="/services/:id" element={<ServiceDetails />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/customer/dashboard" element={<Dashboard />} />
-              <Route path="/provider/dashboard" element={<Dashboard />} />
-              <Route path="/admin/dashboard" element={<Dashboard />} />
-            </Routes>
+        <NotificationProvider>
+          <div className="flex flex-col min-h-screen">
+            <Navbar />
+            <div className="flex-grow">
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/verify-otp" element={<VerifyOtp />} />
+                <Route path="/services" element={<Services />} />
+                <Route path="/services/:id" element={<ServiceDetails />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/customer/dashboard" element={<Dashboard />} />
+                <Route path="/provider/dashboard" element={<Dashboard />} />
+                <Route path="/admin/dashboard" element={<Dashboard />} />
+              </Routes>
+            </div>
+            <Footer />
+            <ToastContainer position="top-right" />
           </div>
-          <Footer />
-          <ToastContainer position="top-right" />
-        </div>
+        </NotificationProvider>
       </AuthProvider>
     </Router>
   );

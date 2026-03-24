@@ -1,48 +1,14 @@
-import { useState, useEffect, useContext, useRef } from 'react';
+import { useState, useContext, useRef, useEffect } from 'react';
 import { Bell, Check, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import axios from 'axios';
-import AuthContext from '../context/AuthContext';
-import socket from '../utils/socket';
+import NotificationContext from '../context/NotificationContext';
 import { useNavigate } from 'react-router-dom';
 
 const NotificationBell = () => {
-    const { user } = useContext(AuthContext);
-    const [notifications, setNotifications] = useState([]);
+    const { notifications, unreadCount, markAsRead } = useContext(NotificationContext);
     const [showDropdown, setShowDropdown] = useState(false);
     const dropdownRef = useRef(null);
     const navigate = useNavigate();
-
-    const fetchNotifications = async () => {
-        try {
-            const config = {
-                headers: { Authorization: `Bearer ${user.token}` },
-            };
-            const { data } = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/notifications`, config);
-            setNotifications(data);
-        } catch (error) {
-            console.error('Failed to fetch notifications:', error);
-        }
-    };
-
-    useEffect(() => {
-        if (user) {
-            fetchNotifications();
-
-            // Join personal notification room
-            socket.emit('join_user_room', user._id);
-
-            // Listen for new notifications
-            socket.on('new_notification', (notification) => {
-                setNotifications(prev => [notification, ...prev]);
-                // Optional: Sound or vibration?
-            });
-
-            return () => {
-                socket.off('new_notification');
-            };
-        }
-    }, [user]);
 
     // Close dropdown on outside click
     useEffect(() => {
@@ -55,19 +21,13 @@ const NotificationBell = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const handleMarkAsRead = async (id) => {
-        try {
-            const config = {
-                headers: { Authorization: `Bearer ${user.token}` },
-            };
-            await axios.put(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/notifications/${id}/read`, {}, config);
-            setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
-        } catch (error) {
-            console.error('Failed to mark read:', error);
+    const handleMarkAsReadAction = async (id, link) => {
+        await markAsRead(id);
+        if (link) {
+            setShowDropdown(false);
+            navigate(link);
         }
     };
-
-    const unreadCount = notifications.filter(n => !n.is_read).length;
 
     return (
         <div className="relative" ref={dropdownRef}>
@@ -89,9 +49,9 @@ const NotificationBell = () => {
                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute right-0 mt-2 w-80 max-h-[400px] overflow-y-auto rounded-xl bg-white shadow-2xl ring-1 ring-black ring-opacity-5 z-50 origin-top-right"
+                        className="absolute right-0 mt-2 w-80 max-h-[400px] overflow-y-auto rounded-xl bg-white shadow-2xl ring-1 ring-black ring-opacity-5 z-[2000] origin-top-right overflow-x-hidden"
                     >
-                        <div className="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-xl">
+                        <div className="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-xl sticky top-0 z-10">
                             <h3 className="font-bold text-gray-800">Notifications</h3>
                             <span className="text-xs text-blue-600 font-medium">{unreadCount} unread</span>
                         </div>
@@ -105,7 +65,7 @@ const NotificationBell = () => {
                             ) : (
                                 notifications.map((notification) => (
                                     <div
-                                        key={notification.id}
+                                        key={notification.id || notification._id}
                                         className={`p-4 transition-colors hover:bg-gray-50 flex gap-3 ${!notification.is_read ? 'bg-blue-50/30' : ''}`}
                                     >
                                         <div className="flex-1">
@@ -113,24 +73,20 @@ const NotificationBell = () => {
                                                 {notification.message}
                                             </p>
                                             <div className="mt-2 flex items-center justify-between text-[10px] text-gray-400">
-                                                <span>{new Date(notification.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                <span>{new Date(notification.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                                 <div className="flex gap-2">
                                                     {!notification.is_read && (
                                                         <button
-                                                            onClick={() => handleMarkAsRead(notification.id)}
-                                                            className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                                                            onClick={() => handleMarkAsReadAction(notification.id || notification._id)}
+                                                            className="text-blue-600 hover:text-blue-800 flex items-center gap-1 font-bold"
                                                         >
-                                                            <Check size={12} /> Read
+                                                            <Check size={12} /> Mark Read
                                                         </button>
                                                     )}
                                                     {notification.link && (
                                                         <button
-                                                            onClick={() => {
-                                                                handleMarkAsRead(notification.id);
-                                                                setShowDropdown(false);
-                                                                navigate(notification.link);
-                                                            }}
-                                                            className="text-gray-600 hover:text-gray-800 flex items-center gap-1"
+                                                            onClick={() => handleMarkAsReadAction(notification.id || notification._id, notification.link)}
+                                                            className="text-gray-600 hover:text-gray-800 flex items-center gap-1 font-bold"
                                                         >
                                                             <ExternalLink size={12} /> View
                                                         </button>
