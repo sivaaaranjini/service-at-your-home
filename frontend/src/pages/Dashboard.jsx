@@ -37,6 +37,7 @@ const Dashboard = () => {
     const [reviewComment, setReviewComment] = useState('');
     const [isSimulating, setIsSimulating] = useState(false);
     const [customerLocations, setCustomerLocations] = useState({});
+    const [payouts, setPayouts] = useState([]);
 
     useEffect(() => {
         socket.on('receive_location', (data) => {
@@ -106,8 +107,13 @@ const Dashboard = () => {
     useEffect(() => {
         if (user) {
             fetchBookings();
-            if (user.role === 'admin') { fetchUnapprovedProviders(); fetchComplaints(); fetchAllUsers(); fetchAllServices(); }
-            if (user.role === 'provider') fetchMyServices();
+            if (user.role === 'admin') { 
+                fetchUnapprovedProviders(); fetchComplaints(); fetchAllUsers(); fetchAllServices(); fetchPayouts();
+            }
+            if (user.role === 'provider') {
+                fetchMyServices();
+                fetchMyPayouts();
+            }
         }
     }, [user]);
 
@@ -200,6 +206,28 @@ const Dashboard = () => {
         } catch (e) { toast.error('Failed to submit complaint'); }
     };
 
+    const fetchPayouts = async () => {
+        try {
+            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/payouts`, { headers: { Authorization: `Bearer ${user.token}` } });
+            setPayouts(res.data);
+        } catch (e) { console.error(e); }
+    };
+
+    const fetchMyPayouts = async () => {
+        try {
+            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/payments/my-payouts`, { headers: { Authorization: `Bearer ${user.token}` } });
+            setPayouts(res.data);
+        } catch (e) { console.error(e); }
+    };
+
+    const handleProcessPayout = async (id) => {
+        try {
+            await axios.put(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/payouts/${id}`, {}, { headers: { Authorization: `Bearer ${user.token}` } });
+            toast.success('Payout marked as paid');
+            fetchPayouts();
+        } catch (e) { toast.error('Payout processing failed'); }
+    };
+
     const handleAddService = async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
@@ -269,16 +297,116 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            {user?.role === 'admin' && <AnalyticsCharts bookings={bookings} role={user?.role} token={user?.token} />}
+            {user?.role === 'admin' && (
+                <>
+                    <AnalyticsCharts bookings={bookings} role={user?.role} token={user?.token} />
+                    
+                    <section className="mt-16 mb-12">
+                        <div className="flex justify-between items-end mb-8">
+                            <div>
+                                <h2 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-3">
+                                    <div className="p-3 bg-indigo-100 text-indigo-600 rounded-2xl shadow-inner"><Wallet size={28} /></div>
+                                    Payout Management
+                                </h2>
+                                <p className="text-sm text-gray-500 mt-2 font-medium">Review and disburse held funds to service providers</p>
+                            </div>
+                            <div className="bg-white px-6 py-3 rounded-2xl shadow-sm border border-gray-100 flex gap-8">
+                                <div>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">In Escrow</p>
+                                    <p className="text-xl font-black text-indigo-600">₹{payouts.filter(p => p.payout_status === 'Pending').reduce((sum, p) => sum + (p.amount || 0), 0).toLocaleString()}</p>
+                                </div>
+                                <div className="w-px h-8 bg-gray-100"></div>
+                                <div>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Disbursed</p>
+                                    <p className="text-xl font-black text-emerald-600">₹{payouts.filter(p => p.payout_status === 'Paid').reduce((sum, p) => sum + (p.amount || 0), 0).toLocaleString()}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-[2.5rem] shadow-xl border border-gray-50 overflow-hidden">
+                            <table className="w-full text-left">
+                                <thead>
+                                    <tr className="bg-gray-50/50 border-b border-gray-100">
+                                        <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Provider & Service</th>
+                                        <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Amount</th>
+                                        <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Escrow Status</th>
+                                        <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {payouts.map(payout => (
+                                        <tr key={payout._id} className="hover:bg-gray-50/30 transition-colors">
+                                            <td className="px-8 py-6">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-black text-xs shadow-inner">
+                                                        {payout.booking?.provider?.name?.charAt(0) || 'P'}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-gray-900 text-sm">{payout.booking?.provider?.name || 'Unknown Provider'}</p>
+                                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">{payout.booking?.service?.service_name}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-6 text-center">
+                                                <span className="font-black text-gray-800">₹{payout.amount}</span>
+                                            </td>
+                                            <td className="px-8 py-6 text-center">
+                                                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                                                    payout.payout_status === 'Paid' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600 animate-pulse'
+                                                }`}>
+                                                    {payout.payout_status === 'Paid' ? 'Disbursed' : 'In Escrow'}
+                                                </span>
+                                            </td>
+                                            <td className="px-8 py-6 text-right">
+                                                {payout.payout_status === 'Pending' ? (
+                                                    <button 
+                                                        onClick={() => handleProcessPayout(payout._id)}
+                                                        className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-black shadow-lg shadow-indigo-100 hover:bg-indigo-700 hover:-translate-y-0.5 transition-all"
+                                                    >
+                                                        Disburse Funds
+                                                    </button>
+                                                ) : (
+                                                    <span className="text-[10px] text-gray-300 font-black uppercase flex items-center justify-end gap-1"><CircleCheck size={14} /> Settlement Done</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {payouts.length === 0 && (
+                                        <tr>
+                                            <td colSpan="4" className="px-8 py-12 text-center text-gray-400 font-bold italic">No financial movements detected yet.</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </>
+            )}
 
             {user?.role === 'provider' && user?.isProviderApproved && (
                 <div className="mb-12">
-                    <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-8 mb-10 text-white shadow-lg flex flex-col md:flex-row justify-between items-center gap-8">
-                        <div>
-                            <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest mb-1">Available Balance</p>
-                            <h3 className="text-5xl font-bold">₹{bookings.filter(b => b.status === 'Completed').reduce((sum, b) => sum + (b.serviceId?.price || 0), 0).toLocaleString()}</h3>
+                    <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="bg-gradient-to-br from-indigo-600 to-blue-700 rounded-3xl p-10 mb-10 text-white shadow-2xl flex flex-col md:flex-row justify-between items-center gap-8 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
+                        <div className="z-10">
+                            <p className="text-xs font-black opacity-80 uppercase tracking-[0.2em] mb-3">Escrow Ledger</p>
+                            <div className="flex items-baseline gap-4">
+                                <h3 className="text-6xl font-black">₹{payouts.filter(p => p.payout_status === 'Pending').reduce((sum, p) => sum + (p.amount || 0), 0).toLocaleString()}</h3>
+                                <span className="text-indigo-100 font-bold opacity-70">Awaiting Payout</span>
+                            </div>
+                            <div className="mt-6 flex gap-6 text-sm font-bold">
+                                <span className="bg-white/10 px-4 py-2 rounded-full cursor-help hover:bg-white/20 transition-all border border-white/10" title="Total amount you've already received in your bank account">
+                                    Disbursed: ₹{payouts.filter(p => p.payout_status === 'Paid').reduce((sum, p) => sum + (p.amount || 0), 0).toLocaleString()}
+                                </span>
+                            </div>
                         </div>
-                        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => toast.info('Payout requests are processed on the 1st of every month.')} className="bg-white text-emerald-600 font-bold px-8 py-3.5 rounded-lg shadow-md hover:bg-gray-50 transition-colors">Request Payout</motion.button>
+                        <motion.button 
+                            whileHover={{ scale: 1.05, backgroundColor: '#f8fafc' }} 
+                            whileTap={{ scale: 0.95 }} 
+                            onClick={() => toast.info('Request received! Admin will review and process your payout within 24-48 hours.')} 
+                            className="z-10 bg-white text-indigo-600 font-black px-10 py-5 rounded-2xl shadow-xl hover:shadow-2xl transition-all uppercase tracking-wider text-sm flex items-center gap-3"
+                        >
+                            <Wallet size={20} /> Withdraw Funds
+                        </motion.button>
                     </motion.div>
 
                     <h2 className="text-2xl font-black mb-6 flex items-center gap-2 text-gray-800"><CirclePlus size={28} className="text-blue-600" /> Offering New Service</h2>
