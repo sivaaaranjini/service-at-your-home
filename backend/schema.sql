@@ -5,6 +5,7 @@
 CREATE TYPE user_role AS ENUM ('customer', 'provider', 'admin');
 CREATE TYPE booking_status AS ENUM ('Pending', 'Accepted', 'OnTheWay', 'In Progress', 'Completed', 'Cancelled', 'Declined', 'Refunded');
 CREATE TYPE payment_status AS ENUM ('Pending', 'Paid', 'Failed');
+CREATE TYPE payout_status AS ENUM ('Pending', 'Requested', 'Approved', 'Paid', 'Failed');
 CREATE TYPE complaint_status AS ENUM ('Open', 'Reviewed', 'Resolved');
 
 -- 2. Users Table
@@ -55,6 +56,7 @@ CREATE TABLE payments (
     razorpay_payment_id VARCHAR(255),
     amount INT NOT NULL,
     status payment_status DEFAULT 'Pending',
+    payout_status payout_status DEFAULT 'Pending',
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -76,6 +78,19 @@ CREATE TABLE complaints (
     booking_id UUID NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
     description TEXT NOT NULL,
     status complaint_status DEFAULT 'Open',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 8. Offers Table
+CREATE TABLE offers (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    discount_percentage INT NOT NULL CHECK (discount_percentage >= 0 AND discount_percentage <= 100),
+    service_id UUID REFERENCES services(id) ON DELETE CASCADE,
+    expiry_date DATE,
+    is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );

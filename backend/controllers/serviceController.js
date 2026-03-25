@@ -25,20 +25,28 @@ const getServices = async (req, res) => {
         }
 
         const { data: services, error } = await query;
-        console.log("[DEBUG getServices] Supabase raw result:", {
-            count: services?.length,
-            hasError: !!error,
-            firstItemKeys: services?.[0] ? Object.keys(services[0]) : 'N/A'
-        });
-
+        
         if (error) {
-            console.error("[DEBUG getServices] Supabase error:", error);
-            return res.status(500).json({ message: error.message });
+            console.error("[DEBUG getServices] Supabase error detail:", {
+                code: error.code,
+                message: error.message,
+                hint: error.hint,
+                details: error.details
+            });
+            return res.status(500).json({ 
+                message: "Database query failed", 
+                error: error.message,
+                details: error.hint || error.details 
+            });
+        }
+
+        if (!services) {
+            console.log("[DEBUG getServices] No services found (null/undefined)");
+            return res.json([]);
         }
 
         // Map `id` back to `_id` so frontend doesn't break
-        const mappedServices = services ? services.map(s => {
-            // Safely handle providerId which might be an object or an array of 1 object
+        const mappedServices = services.map(s => {
             let providerInfo = null;
             if (s.providerId) {
                 const rawProvider = Array.isArray(s.providerId) ? s.providerId[0] : s.providerId;
@@ -56,13 +64,17 @@ const getServices = async (req, res) => {
                 serviceName: s.service_name,
                 providerId: providerInfo
             };
-        }) : [];
+        });
 
-        console.log(`[DEBUG getServices] Returning ${mappedServices.length} services`);
+        console.log(`[DEBUG getServices] Successfully returning ${mappedServices.length} services`);
         return res.json(mappedServices);
     } catch (error) {
-        console.error("[DEBUG getServices] Catch block error:", error);
-        res.status(500).json({ message: error.message });
+        console.error("[DEBUG getServices] UNEXPECTED EXCEPTION:", error);
+        res.status(500).json({ 
+            message: "Internal Server Error", 
+            error: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
     }
 };
 

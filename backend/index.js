@@ -47,6 +47,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const complaintRoutes = require('./routes/complaintRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const offerRoutes = require('./routes/offerRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/services', serviceRoutes);
@@ -56,6 +57,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/complaints', complaintRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/offers', offerRoutes);
 app.use('/api/messages', require('./routes/messageRoutes'));
 
 
@@ -90,9 +92,16 @@ io.on('connection', (socket) => {
     // Handle Live GPS Tracking (Phase 5)
     socket.on('update_location', (data) => {
         // data = { bookingId, lat, lng }
-        console.log(`[GPS_SIGNAL] Booking: ${data.bookingId} | Lat: ${data.lat} | Lng: ${data.lng}`);
+        console.log(`[GPS_SIGNAL] Provider Update | Booking: ${data.bookingId} | Lat: ${data.lat} | Lng: ${data.lng}`);
         // Broadcast the provider's coordinates directly to the customer in the same room
         socket.to(data.bookingId).emit('receive_location', data);
+    });
+
+    socket.on('update_customer_location', (data) => {
+        // data = { bookingId, lat, lng }
+        console.log(`[GPS_SIGNAL] Customer Update | Booking: ${data.bookingId} | Lat: ${data.lat} | Lng: ${data.lng}`);
+        // Broadcast the customer's coordinates to the provider
+        socket.to(data.bookingId).emit('receive_customer_location', data);
     });
 
     // Handle Admin Global Broadcasts

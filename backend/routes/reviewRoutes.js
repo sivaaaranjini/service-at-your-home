@@ -8,6 +8,7 @@ const {
 } = require('../controllers/reviewController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
+router.get('/', getRecentReviews);
 router.post('/', protect, authorize('customer'), createReview);
 router.get('/recent', getRecentReviews);
 router.get('/service/:serviceId', getReviewsByService);

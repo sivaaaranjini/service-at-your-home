@@ -9,7 +9,7 @@ import AnalyticsCharts from '../components/AnalyticsCharts';
 import LiveTrackingMap from '../components/LiveTrackingMap';
 import generateInvoice from '../utils/generateInvoice';
 import socket from '../utils/socket';
-import { LayoutDashboard, Users, MessageSquare, QrCode, ClipboardList, TriangleAlert, Star, CircleCheck, Clock, ShieldCheck, MapPin, User, Settings, LogOut, FileText, ShieldOff, CirclePlus, ArrowUpRight, CreditCard, X, RotateCcw, CircleX, Wallet, UserCheck, Trash2 } from 'lucide-react';
+import { LayoutDashboard, Users, MessageSquare, QrCode, ClipboardList, TriangleAlert, Star, CircleCheck, Clock, ShieldCheck, MapPin, User, Settings, LogOut, FileText, ShieldOff, CirclePlus, ArrowUpRight, CreditCard, X, RotateCcw, CircleX, Wallet, UserCheck, Trash2, Tag, BarChart3, Briefcase, History, UserCog } from 'lucide-react';
 import ReviewsList from '../components/ReviewsList';
 import ChatModal from '../components/ChatModal';
 
@@ -38,6 +38,9 @@ const Dashboard = () => {
     const [isSimulating, setIsSimulating] = useState(false);
     const [customerLocations, setCustomerLocations] = useState({});
     const [payouts, setPayouts] = useState([]);
+    const [offers, setOffers] = useState([]);
+    const [adminSection, setAdminSection] = useState('analytics'); // analytics, users, providers, payouts, bookings, broadcast, disputes, discounts
+    const [providerSection, setProviderSection] = useState('revenue'); // revenue, new_requests, active_jobs, past_jobs, portfolio, add_service, payouts, live, feedback
 
     useEffect(() => {
         socket.on('receive_location', (data) => {
@@ -108,7 +111,7 @@ const Dashboard = () => {
         if (user) {
             fetchBookings();
             if (user.role === 'admin') { 
-                fetchUnapprovedProviders(); fetchComplaints(); fetchAllUsers(); fetchAllServices(); fetchPayouts();
+                fetchUnapprovedProviders(); fetchComplaints(); fetchAllUsers(); fetchAllServices(); fetchPayouts(); fetchOffers();
             }
             if (user.role === 'provider') {
                 fetchMyServices();
@@ -206,6 +209,37 @@ const Dashboard = () => {
         } catch (e) { toast.error('Failed to submit complaint'); }
     };
 
+    const fetchOffers = async () => {
+        try {
+            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/offers`);
+            setOffers(res.data);
+        } catch (e) { console.error(e); }
+    };
+
+    const handleAddOffer = async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const offerData = {
+            title: formData.get('title'),
+            description: formData.get('description'),
+            discount_percentage: formData.get('discount_percentage'),
+            service_id: formData.get('service_id') || null,
+            expiry_date: formData.get('expiry_date') || null
+        };
+        try {
+            await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/offers`, offerData, { headers: { Authorization: `Bearer ${user.token}` } });
+            toast.success('Offer created'); e.target.reset(); fetchOffers();
+        } catch (e) { toast.error('Failed to create offer'); }
+    };
+
+    const handleDeleteOffer = async (id) => {
+        if (!window.confirm('Delete this offer?')) return;
+        try {
+            await axios.delete(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/offers/${id}`, { headers: { Authorization: `Bearer ${user.token}` } });
+            toast.success('Offer removed'); fetchOffers();
+        } catch (e) { toast.error('Failed to delete offer'); }
+    };
+
     const fetchPayouts = async () => {
         try {
             const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin/payouts`, { headers: { Authorization: `Bearer ${user.token}` } });
@@ -284,334 +318,1159 @@ const Dashboard = () => {
     }) : bookings;
 
     return (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-7xl mx-auto px-4 py-8">
-            <div className="flex justify-between items-center mb-12">
-                <motion.h1 initial={{ x: -20 }} animate={{ x: 0 }} className="text-2xl font-bold text-gray-800 tracking-tight font-sans">
-                    {user?.role === 'customer' && 'My Bookings'}
-                    {user?.role === 'provider' && 'My Jobs'}
-                    {user?.role === 'admin' && 'Admin Dashboard'}
-                </motion.h1>
-                <div className="bg-blue-50 px-4 py-2 rounded-full flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
-                    <span className="text-sm font-bold text-blue-700 uppercase tracking-widest">{user?.role}</span>
-                </div>
-            </div>
-
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen">
             {user?.role === 'admin' && (
-                <>
-                    <AnalyticsCharts bookings={bookings} role={user?.role} token={user?.token} />
-                    
-                    <section className="mt-16 mb-12">
-                        <div className="flex justify-between items-end mb-8">
-                            <div>
-                                <h2 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-3">
-                                    <div className="p-3 bg-indigo-100 text-indigo-600 rounded-2xl shadow-inner"><Wallet size={28} /></div>
-                                    Payout Management
-                                </h2>
-                                <p className="text-sm text-gray-500 mt-2 font-medium">Review and disburse held funds to service providers</p>
-                            </div>
-                            <div className="bg-white px-6 py-3 rounded-2xl shadow-sm border border-gray-100 flex gap-8">
-                                <div>
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">In Escrow</p>
-                                    <p className="text-xl font-black text-indigo-600">₹{payouts.filter(p => p.payout_status === 'Pending').reduce((sum, p) => sum + (p.amount || 0), 0).toLocaleString()}</p>
+                <div className="flex flex-col lg:flex-row min-h-screen bg-[#f8f9fc] font-sans">
+                    {/* Light Sidebar */}
+                    <motion.aside initial={{ x: -100, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="lg:w-72 bg-white border-r border-gray-100 flex-shrink-0 flex flex-col z-20">
+                        {/* Logo / Brand Section */}
+                        <div className="p-8 mb-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-100">
+                                    <ShieldCheck size={24} />
                                 </div>
-                                <div className="w-px h-8 bg-gray-100"></div>
-                                <div>
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Disbursed</p>
-                                    <p className="text-xl font-black text-emerald-600">₹{payouts.filter(p => p.payout_status === 'Paid').reduce((sum, p) => sum + (p.amount || 0), 0).toLocaleString()}</p>
-                                </div>
+                                <span className="text-xl font-bold text-gray-900 tracking-tight">SafeLine</span>
                             </div>
                         </div>
 
-                        <div className="bg-white rounded-[2.5rem] shadow-xl border border-gray-50 overflow-hidden">
-                            <table className="w-full text-left">
-                                <thead>
-                                    <tr className="bg-gray-50/50 border-b border-gray-100">
-                                        <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Provider & Service</th>
-                                        <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Amount</th>
-                                        <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Escrow Status</th>
-                                        <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-50">
-                                    {payouts.map(payout => (
-                                        <tr key={payout._id} className="hover:bg-gray-50/30 transition-colors">
-                                            <td className="px-8 py-6">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-black text-xs shadow-inner">
-                                                        {payout.booking?.provider?.name?.charAt(0) || 'P'}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-bold text-gray-900 text-sm">{payout.booking?.provider?.name || 'Unknown Provider'}</p>
-                                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">{payout.booking?.service?.service_name}</p>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-8 py-6 text-center">
-                                                <span className="font-black text-gray-800">₹{payout.amount}</span>
-                                            </td>
-                                            <td className="px-8 py-6 text-center">
-                                                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                                                    payout.payout_status === 'Paid' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600 animate-pulse'
-                                                }`}>
-                                                    {payout.payout_status === 'Paid' ? 'Disbursed' : 'In Escrow'}
-                                                </span>
-                                            </td>
-                                            <td className="px-8 py-6 text-right">
-                                                {payout.payout_status === 'Pending' ? (
-                                                    <button 
-                                                        onClick={() => handleProcessPayout(payout._id)}
-                                                        className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-black shadow-lg shadow-indigo-100 hover:bg-indigo-700 hover:-translate-y-0.5 transition-all"
-                                                    >
-                                                        Disburse Funds
-                                                    </button>
-                                                ) : (
-                                                    <span className="text-[10px] text-gray-300 font-black uppercase flex items-center justify-end gap-1"><CircleCheck size={14} /> Settlement Done</span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {payouts.length === 0 && (
-                                        <tr>
-                                            <td colSpan="4" className="px-8 py-12 text-center text-gray-400 font-bold italic">No financial movements detected yet.</td>
-                                        </tr>
+                        <div className="px-4 flex-1 space-y-1">
+                            {[
+                                { id: 'analytics', label: 'Analytics Financial', icon: <LayoutDashboard size={20} /> },
+                                { id: 'users', label: 'Manage Users', icon: <Users size={20} /> },
+                                { id: 'manageProviders', label: 'Manage Provider', icon: <UserCheck size={20} /> },
+                                { id: 'providers', label: 'Provider Intake', icon: <Clock size={20} />, badge: unapprovedProviders.length },
+                                { id: 'payouts', label: 'Payout', icon: <Wallet size={20} /> },
+                                { id: 'bookings', label: 'Booking Ledger', icon: <ClipboardList size={20} /> },
+                                { id: 'broadcast', label: 'Broadcast', icon: <MessageSquare size={20} /> },
+                                { id: 'discounts', label: 'Offers & Discounts', icon: <Tag size={20} /> },
+                                { id: 'disputes', label: 'Issues', icon: <ShieldOff size={20} />, badge: complaints.length },
+                            ].map((item) => (
+                                <button
+                                    key={item.id}
+                                    onClick={() => setAdminSection(item.id)}
+                                    className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all text-left relative group ${
+                                        adminSection === item.id 
+                                        ? 'bg-indigo-50 text-indigo-600' 
+                                        : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                                    }`}
+                                >
+                                    <div className={`${adminSection === item.id ? 'text-indigo-600' : 'text-gray-400 group-hover:text-gray-600'} transition-colors`}>
+                                        {item.icon}
+                                    </div>
+                                    <span className="flex-1">{item.label}</span>
+                                    {item.badge > 0 && adminSection !== item.id && (
+                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700">
+                                            {item.badge}
+                                        </span>
                                     )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </section>
-                </>
-            )}
+                                </button>
+                            ))}
 
-            {user?.role === 'provider' && user?.isProviderApproved && (
-                <div className="mb-12">
-                    <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="bg-gradient-to-br from-indigo-600 to-blue-700 rounded-3xl p-10 mb-10 text-white shadow-2xl flex flex-col md:flex-row justify-between items-center gap-8 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
-                        <div className="z-10">
-                            <p className="text-xs font-black opacity-80 uppercase tracking-[0.2em] mb-3">Escrow Ledger</p>
-                            <div className="flex items-baseline gap-4">
-                                <h3 className="text-6xl font-black">₹{payouts.filter(p => p.payout_status === 'Pending').reduce((sum, p) => sum + (p.amount || 0), 0).toLocaleString()}</h3>
-                                <span className="text-indigo-100 font-bold opacity-70">Awaiting Payout</span>
+                            <div className="pt-8 border-t border-gray-100 mt-8 mx-4">
+                                <button onClick={() => window.location.href = '/logout'} className="w-full flex items-center gap-3 px-0 py-3 text-sm font-semibold text-red-500 hover:text-red-600 transition-all">
+                                    <LogOut size={20} />
+                                    <span>Sign Out</span>
+                                </button>
                             </div>
-                            <div className="mt-6 flex gap-6 text-sm font-bold">
-                                <span className="bg-white/10 px-4 py-2 rounded-full cursor-help hover:bg-white/20 transition-all border border-white/10" title="Total amount you've already received in your bank account">
-                                    Disbursed: ₹{payouts.filter(p => p.payout_status === 'Paid').reduce((sum, p) => sum + (p.amount || 0), 0).toLocaleString()}
+                        </div>
+
+                        <div className="p-8 mt-auto">
+                           <div className="bg-white/5 rounded-3xl p-6 flex items-center justify-between">
+                                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Protocol Stable</span>
+                                <Settings size={16} className="text-gray-500 hover:text-white cursor-pointer transition-colors" />
+                           </div>
+                        </div>
+                    </motion.aside>
+
+                    {/* Main Content Area */}
+                    <div className="flex-1 overflow-y-auto max-h-screen">
+                        <header className="flex justify-between items-center px-12 py-6 bg-white border-b border-gray-100">
+                            <div className="flex items-center gap-4 text-xs font-medium text-gray-400">
+                                <span className="hover:text-gray-600 cursor-pointer">Dashboard</span>
+                                <span>&rsaquo;</span>
+                                <span className="text-gray-900 font-semibold capitalize">
+                                    {adminSection === 'manageProviders' ? 'Manage Provider' : 
+                                     adminSection === 'analytics' ? 'Analytics Financial' :
+                                     adminSection === 'bookings' ? 'Booking Ledger' :
+                                     adminSection === 'disputes' ? 'Issues' :
+                                     adminSection === 'users' ? 'Manage Users' :
+                                     adminSection === 'payouts' ? 'Payout' :
+                                     adminSection === 'broadcast' ? 'Broadcast' :
+                                     adminSection.replace(/([A-Z])/g, ' $1')}
                                 </span>
                             </div>
-                        </div>
-                        <motion.button 
-                            whileHover={{ scale: 1.05, backgroundColor: '#f8fafc' }} 
-                            whileTap={{ scale: 0.95 }} 
-                            onClick={() => toast.info('Request received! Admin will review and process your payout within 24-48 hours.')} 
-                            className="z-10 bg-white text-indigo-600 font-black px-10 py-5 rounded-2xl shadow-xl hover:shadow-2xl transition-all uppercase tracking-wider text-sm flex items-center gap-3"
-                        >
-                            <Wallet size={20} /> Withdraw Funds
-                        </motion.button>
-                    </motion.div>
-
-                    <h2 className="text-2xl font-black mb-6 flex items-center gap-2 text-gray-800"><CirclePlus size={28} className="text-blue-600" /> Offering New Service</h2>
-                    <motion.form initial={{ opacity: 0 }} animate={{ opacity: 1 }} onSubmit={handleAddService} className="bg-white p-8 rounded-3xl shadow-xl mb-12 grid grid-cols-1 md:grid-cols-2 gap-6 border border-gray-100">
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Service Title</label>
-                            <input name="serviceName" placeholder="e.g. Master Plumbing" required className="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-600 outline-none transition-all font-semibold" />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Category</label>
-                            <select name="category" className="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-600 outline-none transition-all font-semibold">
-                                <option value="Cleaning">🧽 Cleaning</option>
-                                <option value="Plumbing">🚰 Plumbing</option>
-                                <option value="Electrician">⚡ Electrician</option>
-                                <option value="Gardening">🌻 Gardening</option>
-                            </select>
-                        </div>
-                        <div className="space-y-1 md:col-span-2">
-                            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Work Description</label>
-                            <textarea name="description" placeholder="Describe your expertise..." rows="3" className="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-600 outline-none transition-all font-semibold"></textarea>
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Base Price (₹)</label>
-                            <input type="number" name="price" placeholder="500" required className="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-600 outline-none transition-all font-semibold" />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-gray-400 uppercase ml-1">Service Area</label>
-                            <input name="location" placeholder="City or Neighborhood" required className="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-600 outline-none transition-all font-semibold" />
-                        </div>
-                        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit" className="md:col-span-2 bg-blue-600 text-white py-5 rounded-2xl font-black text-lg shadow-lg shadow-blue-200 hover:bg-blue-700">Create My Listing</motion.button>
-                    </motion.form>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-                        <div className="lg:col-span-2 bg-white p-8 rounded-3xl shadow-xl border border-gray-100 flex flex-col md:flex-row items-center justify-between gap-8">
-                            <div className="text-center md:text-left">
-                                <h2 className="text-2xl font-black mb-2">Instant Verification</h2>
-                                <p className="text-gray-500 mb-6 max-w-sm">Customers scan this code to verify your arrival and start the service timer safely.</p>
-                                <motion.button whileHover={{ scale: 1.05 }} onClick={() => setIsSimulating(!isSimulating)} className={`px-8 py-3 rounded-2xl font-bold flex items-center gap-2 transition-all ${isSimulating ? 'bg-red-100 text-red-600 border-2 border-red-200' : 'bg-indigo-600 text-white'}`}>
-                                    {isSimulating ? <RotateCcw size={20} className="animate-spin" /> : <ArrowUpRight size={20} />}
-                                    {isSimulating ? 'Live Simulation Active' : 'Test Real-time Tracking'}
-                                </motion.button>
+                            <div className="flex items-center gap-6">
+                                <div className="text-right">
+                                    <p className="text-sm font-bold text-gray-900 leading-none">{user?.name || 'admin'}</p>
+                                    <p className="text-[10px] text-gray-400 font-medium mt-1 uppercase tracking-tighter">admin • Super Admin</p>
+                                </div>
+                                <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 border border-gray-200">
+                                    <User size={20} />
+                                </div>
                             </div>
-                            <div className="p-4 bg-blue-50 rounded-3xl border-2 border-blue-100 shadow-inner">
-                                <QRCodeSVG value={user._id} size={160} />
-                                <p className="text-[10px] text-center mt-2 font-black text-blue-400 uppercase tracking-tighter">Your unique Provider ID</p>
-                            </div>
-                        </div>
+                        </header>
 
-                        <div className="bg-white p-8 rounded-3xl shadow-xl border border-gray-100 flex flex-col justify-center text-center">
-                            <h3 className="text-xl font-black mb-2">Service Portfolio</h3>
-                            <p className="text-sm text-gray-500 mb-6">You have {myServices.length} active listings on the marketplace.</p>
-                            <div className="flex flex-wrap justify-center gap-2">
-                                {myServices.map(s => (
-                                    <span key={s._id} className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-bold">{s.serviceName}</span>
+                        <div className="p-12">
+                            <div className="mb-10 flex justify-between items-end">
+                                <div>
+                                    <h1 className="text-2xl font-bold text-gray-900 tracking-tight capitalize">
+                                        {adminSection === 'manageProviders' ? 'Manage Provider' : 
+                                         adminSection === 'analytics' ? 'Analytics Financial' :
+                                         adminSection === 'bookings' ? 'Booking Ledger' :
+                                         adminSection === 'disputes' ? 'Issues' :
+                                         adminSection === 'users' ? 'Manage Users' :
+                                         adminSection === 'payouts' ? 'Payout' :
+                                         adminSection === 'broadcast' ? 'Broadcast' :
+                                         adminSection.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                                    </h1>
+                                    <p className="text-sm text-gray-500 mt-1 font-medium">Global governance and {adminSection} management</p>
+                                </div>
+                            </div>
+
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={adminSection}
+                                initial={{ y: 20, opacity: 0 }}
+                                animate={{ y: 0, opacity: 1 }}
+                                exit={{ y: -20, opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                            >
+                                {adminSection === 'analytics' && (
+                                    <div className="space-y-12">
+                                        <AnalyticsCharts bookings={bookings} role={user?.role} token={user?.token} />
+                                        
+                                        {/* Desktop Live Maps Section inside Analytics */}
+                                        {bookings.some(b => b.status === 'OnTheWay') && (
+                                            <div className="mt-12 bg-white/5 backdrop-blur-sm p-10 rounded-[3.5rem] border-2 border-dashed border-gray-200">
+                                                <h2 className="text-xl font-black text-gray-900 mb-10 flex items-center gap-4">
+                                                    <div className="w-10 h-10 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center animate-pulse"><MapPin size={24} /></div>
+                                                    Live Fleet Matrix
+                                                </h2>
+                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                                                    {bookings.filter(b => b.status === 'OnTheWay').map(booking => (
+                                                        <div key={booking._id} className="bg-white p-6 rounded-[3rem] shadow-2xl shadow-gray-200/50 border border-gray-100 hover:border-blue-200 transition-all">
+                                                            <div className="flex justify-between items-center mb-6 px-4">
+                                                                <div className="flex items-center gap-4">
+                                                                    <div className="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center font-black text-lg shadow-lg">🚙</div>
+                                                                    <div>
+                                                                        <h4 className="font-black text-gray-900 text-base leading-tight tracking-tight">{booking.serviceId?.serviceName}</h4>
+                                                                        <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.1em] mt-0.5">Operator Dispatch Active</p>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest">Real-time Relay</p>
+                                                                    <p className="text-xs font-bold text-gray-400">ID: #{booking._id.slice(-6)}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="rounded-[2.5rem] overflow-hidden shadow-inner ring-4 ring-gray-50 bg-gray-100 min-h-[300px]">
+                                                                <LiveTrackingMap 
+                                                                    providerLocation={liveLocations[booking._id]} 
+                                                                    customerLocation={customerLocations[booking._id]} 
+                                                                    providerName={booking.providerId?.name || "Provider"} 
+                                                                    userRole={user?.role}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {adminSection === 'payouts' && (
+                                    <div className="space-y-12">
+                                        <div className="flex items-center justify-between px-2">
+                                            <div className="flex items-center gap-6">
+                                                <div className="p-5 bg-indigo-100 text-indigo-600 rounded-[2rem] shadow-sm"><CreditCard size={40} /></div>
+                                                <div>
+                                                    <h2 className="text-2xl font-black text-gray-900 tracking-tight leading-tight uppercase">Payout</h2>
+                                                    <p className="text-sm text-gray-500 font-bold uppercase tracking-[0.2em] opacity-60">Revenue & Escrow Governance</p>
+                                                </div>
+                                            </div>
+                                            <div className="bg-white px-10 py-5 rounded-[2.5rem] shadow-xl border border-gray-50 flex items-center gap-6">
+                                                <div className="text-right">
+                                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Platform Reserve</p>
+                                                    <p className="text-3xl font-black text-gray-900 leading-none tracking-tighter">₹{payouts.filter(p => p.payout_status === 'Pending').reduce((sum, p) => sum + (p.amount || 0), 0).toLocaleString()}</p>
+                                                </div>
+                                                <div className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 animate-pulse"><Wallet size={24} /></div>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                                            <div className="p-8 border-b border-gray-50 bg-gray-50/30">
+                                                <h3 className="text-sm font-bold text-gray-800">Organization Directory</h3>
+                                                <p className="text-xs text-gray-400 mt-1 font-medium">Real-time listing of all provisioned tenant environments.</p>
+                                            </div>
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-left">
+                                                    <thead>
+                                                        <tr className="bg-gray-50/50 border-b border-gray-100">
+                                                            <th className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest">ORGANIZATION</th>
+                                                            <th className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">ESCROW VALUE</th>
+                                                            <th className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">TENANT ADMIN</th>
+                                                            <th className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">ACTIONS</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-50">
+                                                        {payouts.map(payout => (
+                                                            <tr key={payout._id} className="hover:bg-gray-50/30 transition-all group">
+                                                                <td className="px-8 py-6">
+                                                                    <div className="flex items-center gap-4">
+                                                                        <div className="w-10 h-10 bg-indigo-50 text-indigo-500 rounded-lg flex items-center justify-center font-bold text-sm">
+                                                                            <ShieldCheck size={18} />
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="font-bold text-gray-900 text-sm leading-tight">{payout.booking?.provider?.name || 'Unknown Entity'}</p>
+                                                                            <p className="text-[10px] text-gray-400 font-medium mt-1">{payout.booking?.service?.service_name || 'Operational Module'}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-8 py-6 text-center text-sm font-bold text-gray-700">₹{payout.amount}</td>
+                                                                <td className="px-8 py-6 text-center">
+                                                                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                                                        payout.payout_status === 'Paid' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'
+                                                                    }`}>
+                                                                        {payout.payout_status === 'Paid' ? 'admin' : 'In Escrow'}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-8 py-6 text-right">
+                                                                    <div className="flex items-center justify-end gap-2">
+                                                                        {payout.payout_status === 'Pending' ? (
+                                                                            <button 
+                                                                                onClick={() => handleProcessPayout(payout._id)}
+                                                                                className="px-4 py-1.5 bg-white border border-gray-200 rounded text-[10px] font-bold text-gray-700 uppercase hover:bg-gray-50 transition-all"
+                                                                            >
+                                                                                MANAGE
+                                                                            </button>
+                                                                        ) : (
+                                                                            <span className="text-[10px] font-bold text-emerald-500 px-3 uppercase">SETTLED</span>
+                                                                        )}
+                                                                        <button className="p-1.5 text-gray-300 hover:text-indigo-600 transition-colors">
+                                                                            <MapPin size={16} />
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                        {payouts.length === 0 && (
+                                                            <tr>
+                                                                <td colSpan="4" className="px-8 py-24 text-center">
+                                                                    <p className="text-sm font-medium text-gray-400 italic">No registry signals detected.</p>
+                                                                </td>
+                                                            </tr>
+                                                        )}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {adminSection === 'providers' && (
+                                    <div className="space-y-10">
+                                        <div className="mb-10 px-2 flex items-center gap-5">
+                                            <div className="p-5 bg-orange-100 text-orange-600 rounded-[2rem] shadow-sm"><Clock size={36} /></div>
+                                            <div>
+                                                <h2 className="text-2xl font-black text-gray-900 tracking-tight leading-tight">Provider Intake</h2>
+                                                <p className="text-sm text-gray-500 font-bold uppercase tracking-[0.2em] opacity-60">Onboarding Verification Queue</p>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                                            {unapprovedProviders.map(p => (
+                                                <motion.div layout id={`provider-${p._id}`} key={p._id} className="p-10 bg-white rounded-[3.5rem] shadow-xl border border-orange-50 flex flex-col gap-8 relative overflow-hidden group hover:border-orange-200 transition-all hover:translate-y-[-4px]">
+                                                    <div className="absolute top-0 right-0 w-32 h-32 bg-orange-50/50 rounded-bl-[5rem] -mr-12 -mt-12 transition-transform group-hover:scale-125"></div>
+                                                    <div className="z-10 bg-gradient-to-br from-gray-50 to-white w-16 h-16 rounded-[2rem] flex items-center justify-center text-3xl shadow-inner border border-gray-100">👤</div>
+                                                    <div className="z-10">
+                                                        <h3 className="font-black text-2xl text-gray-950 leading-tight uppercase tracking-tight">{p.name}</h3>
+                                                        <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mt-1.5 italic opacity-80">{p.email}</p>
+                                                    </div>
+                                                    <button onClick={() => handleApproveProvider(p._id)} className="w-full bg-[#1a2332] text-white py-6 rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] hover:bg-orange-600 transition-all shadow-xl hover:shadow-orange-200 z-10">Review & Authorize</button>
+                                                </motion.div>
+                                            ))}
+                                            {unapprovedProviders.length === 0 && (
+                                                <div className="md:col-span-3 py-32 bg-white rounded-[4rem] border-2 border-dashed border-gray-100 text-center grayscale opacity-40">
+                                                    <div className="text-7xl mb-6">✨</div>
+                                                    <p className="text-2xl font-black uppercase tracking-widest text-gray-400 italic">Queue Clear: All Status Verified</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {adminSection === 'disputes' && (
+                                    <div className="space-y-10">
+                                        <div className="flex items-center gap-5 px-2">
+                                            <div className="p-5 bg-red-100 text-red-600 rounded-[2rem] shadow-sm"><ShieldOff size={36} /></div>
+                                            <div>
+                                                <h2 className="text-2xl font-black text-gray-900 tracking-tight leading-tight uppercase">Issues</h2>
+                                                <p className="text-sm text-gray-500 font-bold uppercase tracking-[0.2em] opacity-60">High-Priority Incident Queue</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 gap-8">
+                                            {complaints.length === 0 ? (
+                                                <div className="bg-white p-24 rounded-[3.5rem] shadow-xl border border-gray-100 text-center grayscale opacity-40">
+                                                    <div className="text-7xl mb-6 flex justify-center">🕊️</div>
+                                                    <p className="text-2xl font-black italic font-serif text-gray-400 uppercase tracking-widest">Protocol Status: Harmonious</p>
+                                                </div>
+                                            ) : (
+                                                complaints.map(c => (
+                                                    <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} key={c._id} className="p-10 bg-white rounded-[3rem] shadow-xl border border-red-50 relative group overflow-hidden hover:border-red-200 transition-all">
+                                                        <div className="absolute top-0 right-0 w-32 h-32 bg-red-50 rounded-bl-[5rem] -mr-10 -mt-10 transition-transform group-hover:scale-110"></div>
+                                                        <div className="relative z-10">
+                                                            <div className="flex justify-between items-center mb-8">
+                                                                <div className="flex items-center gap-3">
+                                                                    <span className="w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
+                                                                    <p className="font-black text-red-900 text-sm uppercase tracking-widest">Incident #ID-{c._id.slice(-6)}</p>
+                                                                </div>
+                                                                <span className="bg-red-600 text-white text-[9px] font-black px-5 py-2 rounded-full uppercase tracking-tighter shadow-lg shadow-red-200">Critical Priority</span>
+                                                            </div>
+                                                            <div className="bg-red-50/50 p-8 rounded-[2rem] border-l-8 border-red-500 mb-10">
+                                                                <p className="text-xl text-red-950 leading-relaxed font-bold italic">"{c.description}"</p>
+                                                            </div>
+                                                            <div className="flex gap-4">
+                                                                <button onClick={() => handleResolveComplaint(c._id, 'dismissed')} className="flex-1 bg-gray-100 text-gray-500 py-5 rounded-2xl font-black text-xs uppercase hover:bg-gray-200 transition-all active:scale-95 tracking-widest">Insignificant Action</button>
+                                                                <button onClick={() => handleResolveComplaint(c._id, 'refunded')} className="flex-1 bg-red-600 text-white py-5 rounded-2xl font-black text-xs uppercase shadow-xl shadow-red-200 hover:bg-red-700 hover:-translate-y-1 transition-all active:scale-95 tracking-widest">Execute Full Refund</button>
+                                                            </div>
+                                                        </div>
+                                                    </motion.div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {adminSection === 'broadcast' && (
+                                    <div className="bg-[#1a2332] p-16 rounded-[4rem] shadow-2xl text-white relative overflow-hidden ring-8 ring-white/5">
+                                        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px] -mr-64 -mt-64"></div>
+                                        <div className="relative z-10 max-w-3xl">
+                                            <div className="mb-12 flex items-center gap-6">
+                                                <div className="p-6 bg-gradient-to-tr from-indigo-600 to-blue-500 text-white rounded-[2.5rem] shadow-2xl shadow-indigo-600/30 animate-pulse"><MessageSquare size={44} /></div>
+                                                <div>
+                                                    <h2 className="text-3xl font-black tracking-tight leading-none mb-2 uppercase">Broadcast</h2>
+                                                    <p className="text-indigo-400 text-xs font-black uppercase tracking-[0.3em] opacity-80">Unified Master Messaging Protocol</p>
+                                                </div>
+                                            </div>
+                                            <p className="text-gray-400 text-xl mb-12 leading-relaxed font-bold">Transmit an instantaneous, encrypted alert to all active nodes across the ServiceAtYourHome ecosystem.</p>
+                                            <form onSubmit={handleBroadcast} className="space-y-8">
+                                                <div className="relative group">
+                                                    <textarea className="w-full bg-white/5 border-2 border-white/10 p-10 rounded-[2.5rem] text-white outline-none focus:border-indigo-500 focus:bg-white/10 transition-all text-xl font-bold placeholder:text-gray-600 shadow-inner" rows="6" value={broadcastMessage} onChange={(e) => setBroadcastMessage(e.target.value)} placeholder="Type global transmission content..."></textarea>
+                                                    <div className="absolute bottom-6 right-8 text-[10px] font-black text-gray-600 uppercase tracking-widest">Admin Authorization Required</div>
+                                                </div>
+                                                <motion.button whileHover={{ scale: 1.02, backgroundColor: '#4f46e5' }} whileTap={{ scale: 0.98 }} type="submit" className="w-full bg-indigo-600 text-white py-8 rounded-[2rem] font-black text-2xl shadow-2xl shadow-indigo-900/40 uppercase tracking-[0.2em] transition-all">Execute Broadcast</motion.button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {adminSection === 'discounts' && (
+                                    <div className="space-y-12">
+                                        <div className="flex items-center gap-6 mb-4 px-2">
+                                            <div className="p-5 bg-indigo-100 text-indigo-600 rounded-[2rem] shadow-sm"><Tag size={36} /></div>
+                                            <div>
+                                                <h2 className="text-2xl font-black text-gray-900 tracking-tight leading-tight uppercase">Offers & Discounts</h2>
+                                                <p className="text-sm text-gray-500 font-bold uppercase tracking-[0.2em] opacity-60">Promotional Strategy & Governance</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                            <div className="lg:col-span-1">
+                                                <div className="bg-white p-8 rounded-3xl shadow-xl border border-gray-100 sticky top-8">
+                                                    <h3 className="text-lg font-bold text-gray-900 mb-6">Create New Offer</h3>
+                                                    <form onSubmit={handleAddOffer} className="space-y-5">
+                                                        <div className="space-y-1">
+                                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Offer Title</label>
+                                                            <input name="title" required placeholder="e.g. Holi Special" className="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-600 outline-none transition-all font-semibold text-sm" />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Discount %</label>
+                                                            <input name="discount_percentage" type="number" required placeholder="20" className="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-600 outline-none transition-all font-semibold text-sm" />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Target Service (Optional)</label>
+                                                            <select name="service_id" className="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-600 outline-none transition-all font-semibold text-sm">
+                                                                <option value="">All Services</option>
+                                                                {allServices.map(s => <option key={s._id} value={s._id}>{s.serviceName}</option>)}
+                                                            </select>
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Expiry Date</label>
+                                                            <input name="expiry_date" type="date" className="w-full p-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-600 outline-none transition-all font-semibold text-sm" />
+                                                        </div>
+                                                        <button type="submit" className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all mt-4">Provision Offer</button>
+                                                    </form>
+                                                </div>
+                                            </div>
+
+                                            <div className="lg:col-span-2 space-y-6">
+                                                <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                                                    <div className="p-8 border-b border-gray-50 bg-gray-50/30 flex justify-between items-center">
+                                                        <div>
+                                                            <h3 className="text-sm font-bold text-gray-800">Active Promotions</h3>
+                                                            <p className="text-xs text-gray-400 mt-1 font-medium">Currently active market incentives.</p>
+                                                        </div>
+                                                        <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase">{offers.length} ACTIVE</span>
+                                                    </div>
+                                                    <div className="overflow-x-auto">
+                                                        <table className="w-full text-left">
+                                                            <thead>
+                                                                <tr className="bg-gray-50/50 border-b border-gray-100">
+                                                                    <th className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest">OFFER CONFIG</th>
+                                                                    <th className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">VALUE</th>
+                                                                    <th className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">ACTION</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="divide-y divide-gray-50">
+                                                                {offers.map(offer => (
+                                                                    <tr key={offer._id} className="hover:bg-gray-50/30 transition-all group">
+                                                                        <td className="px-8 py-6">
+                                                                            <div className="flex items-center gap-4">
+                                                                                <div className="w-10 h-10 bg-indigo-50 text-indigo-500 rounded-lg flex items-center justify-center font-bold text-sm">
+                                                                                    <Tag size={18} />
+                                                                                </div>
+                                                                                <div>
+                                                                                    <p className="font-bold text-gray-900 text-sm leading-tight">{offer.title}</p>
+                                                                                    <p className="text-[10px] text-gray-400 font-medium mt-1">
+                                                                                        {offer.service_id ? 'Targeted Service' : 'Platform-Wide'}
+                                                                                    </p>
+                                                                                </div>
+                                                                            </div>
+                                                                        </td>
+                                                                        <td className="px-8 py-6 text-center text-sm font-black text-indigo-600">
+                                                                            {offer.discount_percentage}% OFF
+                                                                        </td>
+                                                                        <td className="px-8 py-6 text-right">
+                                                                            <button onClick={() => handleDeleteOffer(offer._id)} className="p-2 text-gray-300 hover:text-red-500 transition-colors">
+                                                                                <Trash2 size={18} />
+                                                                            </button>
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                                {offers.length === 0 && (
+                                                                    <tr>
+                                                                        <td colSpan="3" className="px-8 py-20 text-center text-gray-400 italic text-sm">No promotional assets provisioned.</td>
+                                                                    </tr>
+                                                                )}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {adminSection === 'users' && (
+                                    <div className="space-y-12">
+                                        <div className="flex items-center gap-6 mb-4 px-2">
+                                            <div className="p-5 bg-indigo-100 text-indigo-600 rounded-[2rem] shadow-sm"><Users size={36} /></div>
+                                            <div>
+                                                <h2 className="text-2xl font-black text-gray-900 tracking-tight leading-tight uppercase">Manage Users</h2>
+                                                <p className="text-sm text-gray-500 font-bold uppercase tracking-[0.2em] opacity-60">Verified Member Directory</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                                            <div className="p-8 border-b border-gray-50 bg-gray-50/30">
+                                                <h3 className="text-sm font-bold text-gray-800">Customer Records</h3>
+                                                <p className="text-xs text-gray-400 mt-1 font-medium">Global governance of consumer-level identity assets.</p>
+                                            </div>
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-left">
+                                                    <thead>
+                                                        <tr className="bg-gray-50/50 border-b border-gray-100">
+                                                            <th className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest">CONSUMER</th>
+                                                            <th className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest">STATUS</th>
+                                                            <th className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">ACTIONS</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-50">
+                                                        {allUsers.filter(u => u.role === 'customer').map(u => (
+                                                            <tr key={u._id} className="hover:bg-gray-50/30 transition-all group">
+                                                                <td className="px-8 py-6">
+                                                                    <div className="flex items-center gap-4">
+                                                                        <div className="w-10 h-10 bg-indigo-50 text-indigo-500 rounded-lg flex items-center justify-center font-bold text-sm">
+                                                                            <User size={18} />
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="font-bold text-gray-900 text-sm leading-tight">{u.name}</p>
+                                                                            <p className="text-[10px] text-gray-400 font-medium mt-1">{u.email}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-8 py-6">
+                                                                    <span className="px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-600">
+                                                                        Verified
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-8 py-6 text-right">
+                                                                    <button onClick={() => handleDeleteUser(u._id)} className="px-4 py-1.5 bg-white border border-gray-200 rounded text-[10px] font-bold text-red-500 uppercase hover:bg-red-50 transition-all">
+                                                                        CLOSE ACCOUNT
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {adminSection === 'manageProviders' && (
+                                    <div className="space-y-12">
+                                        <div className="flex items-center gap-6 mb-4 px-2">
+                                            <div className="p-5 bg-indigo-100 text-indigo-600 rounded-[2rem] shadow-sm"><UserCheck size={36} /></div>
+                                            <div>
+                                                <h2 className="text-2xl font-black text-gray-900 tracking-tight leading-tight uppercase">Manage Provider</h2>
+                                                <p className="text-sm text-gray-500 font-bold uppercase tracking-[0.2em] opacity-60">Certified Service Personnel</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                                            <div className="p-8 border-b border-gray-50 bg-gray-50/30">
+                                                <h3 className="text-sm font-bold text-gray-800">Approved Providers</h3>
+                                                <p className="text-xs text-gray-400 mt-1 font-medium">Directory of authenticated domain experts in the network.</p>
+                                            </div>
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-left">
+                                                    <thead>
+                                                        <tr className="bg-gray-50/50 border-b border-gray-100">
+                                                            <th className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest">PROVIDER</th>
+                                                            <th className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">SERVICES</th>
+                                                            <th className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">PROTOCOL</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-50">
+                                                        {allUsers.filter(u => u.role === 'provider' && u.isProviderApproved).map(u => (
+                                                            <tr key={u._id} className="hover:bg-gray-50/30 transition-all group">
+                                                                <td className="px-8 py-6">
+                                                                    <div className="flex items-center gap-4">
+                                                                        <div className="w-10 h-10 bg-indigo-50 text-indigo-500 rounded-lg flex items-center justify-center font-bold text-sm">
+                                                                            <ShieldCheck size={18} />
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="font-bold text-gray-900 text-sm leading-tight">{u.name}</p>
+                                                                            <p className="text-[10px] text-gray-400 font-medium mt-1 uppercase tracking-tighter">ID: {u._id.slice(-6)}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-8 py-6 text-center">
+                                                                    <span className="text-[10px] font-bold text-gray-500">{u.email}</span>
+                                                                </td>
+                                                                <td className="px-8 py-6 text-right">
+                                                                    <button onClick={() => handleDeleteUser(u._id)} className="px-4 py-1.5 bg-white border border-gray-200 rounded text-[10px] font-bold text-red-500 uppercase hover:bg-red-50 transition-all">
+                                                                        REVOKE ACCESS
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {adminSection === 'bookings' && (
+                                    <div className="space-y-12">
+                                        <div className="flex items-center gap-6 mb-4 px-2">
+                                            <div className="p-5 bg-indigo-100 text-indigo-600 rounded-[2rem] shadow-sm"><FileText size={36} /></div>
+                                            <div>
+                                                <h2 className="text-2xl font-black text-gray-900 tracking-tight leading-tight uppercase">Booking Ledger</h2>
+                                                <p className="text-sm text-gray-500 font-bold uppercase tracking-[0.2em] opacity-60">Global Transactional Oversight</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                                            <div className="p-8 border-b border-gray-50 bg-gray-50/30">
+                                                <h3 className="text-sm font-bold text-gray-800">Booking Ledger</h3>
+                                                <p className="text-xs text-gray-400 mt-1 font-medium">Platform-wide transactional history and life-cycle events.</p>
+                                            </div>
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-left">
+                                                    <thead>
+                                                        <tr className="bg-gray-50/50 border-b border-gray-100">
+                                                            <th className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest">ASSET ENTITY</th>
+                                                            <th className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest">HANDSHAKE</th>
+                                                            <th className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">STATUS</th>
+                                                            <th className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest">GROSS VALUE</th>
+                                                            <th className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">GOVERNANCE</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-50">
+                                                        {bookings.map(booking => (
+                                                            <tr key={booking._id} className="hover:bg-gray-50/30 transition-all group">
+                                                                <td className="px-8 py-6">
+                                                                    <div className="flex items-center gap-4">
+                                                                        <div className="w-10 h-10 bg-indigo-50 text-indigo-500 rounded-lg flex items-center justify-center font-bold text-sm">
+                                                                            <FileText size={18} />
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="font-bold text-gray-900 text-sm leading-tight">{booking.serviceId?.serviceName || 'Legacy Entity'}</p>
+                                                                            <p className="text-[10px] text-gray-400 font-medium mt-1">{booking.serviceId?.category || 'General Protocol'}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-8 py-6 text-sm text-gray-600 font-medium">
+                                                                    {new Date(booking.createdAt).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })}
+                                                                </td>
+                                                                <td className="px-8 py-6 text-center">
+                                                                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                                                        booking.status === 'Completed' ? 'bg-emerald-50 text-emerald-600' : 
+                                                                        booking.status === 'Cancelled' ? 'bg-red-50 text-red-600' : 'bg-orange-50 text-orange-600'
+                                                                    }`}>
+                                                                        {booking.status}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-8 py-6 font-bold text-gray-900 text-sm">₹{booking.serviceId?.price}</td>
+                                                                <td className="px-8 py-6 text-right">
+                                                                    <button className="px-4 py-1.5 bg-white border border-gray-200 rounded text-[10px] font-bold text-gray-400 uppercase cursor-not-allowed">
+                                                                        INTERCEPT
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </motion.div>
+                        </AnimatePresence>
+                    </div>
+                </div>
+            </div>
+        )}
+       
+            {user?.role === 'provider' && user?.isProviderApproved && (
+                <div className="flex min-h-screen bg-[#f8fafc]">
+                    {/* Provider Sidebar */}
+                    <div className="w-80 bg-white border-r border-slate-100 flex flex-col sticky top-0 h-screen overflow-y-scroll scrollbar-hide">
+                        <div className="p-8">
+                            <div className="flex items-center gap-3 mb-10">
+                                <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-black shadow-lg shadow-indigo-200">
+                                    <UserCog size={22} />
+                                </div>
+                                <div>
+                                    <h1 className="text-xl font-black text-slate-800 tracking-tight leading-none uppercase">Pro-Console</h1>
+                                    <p className="text-[10px] text-slate-400 font-bold tracking-widest mt-1 opacity-70">CONTROL PANEL V2.0</p>
+                                </div>
+                            </div>
+
+                            <nav className="space-y-1.5">
+                                {[
+                                    { id: 'revenue', label: 'Overview', icon: BarChart3, color: 'text-emerald-500' },
+                                    { id: 'new_requests', label: 'New Requests', icon: MessageSquare, color: 'text-amber-500' },
+                                    { id: 'active_jobs', label: 'Active Jobs', icon: Clock, color: 'text-blue-500' },
+                                    { id: 'past_jobs', label: 'Past Jobs', icon: History, color: 'text-slate-400' },
+                                    { id: 'payouts', label: 'Payouts', icon: Wallet, color: 'text-indigo-500' },
+                                    { id: 'portfolio', label: 'Portfolio', icon: Briefcase, color: 'text-indigo-500' },
+                                    { id: 'add_service', label: 'Create Listing', icon: CirclePlus, color: 'text-indigo-500' },
+                                    { id: 'live', label: 'Live Matrix', icon: MapPin, color: 'text-rose-500' },
+                                    { id: 'feedback', label: 'Feedback', icon: Star, color: 'text-yellow-500' },
+                                ].map((item) => (
+                                    <button
+                                        key={item.id}
+                                        onClick={() => setProviderSection(item.id)}
+                                        className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl transition-all duration-300 group ${
+                                            providerSection === item.id 
+                                            ? 'bg-indigo-50 text-indigo-700 shadow-sm' 
+                                            : 'text-slate-400 hover:bg-slate-50 hover:text-slate-600'
+                                        }`}
+                                    >
+                                        <item.icon size={18} className={providerSection === item.id ? item.color : 'text-slate-300 group-hover:text-slate-400'} />
+                                        <span className="text-xs font-black uppercase tracking-wider">{item.label}</span>
+                                        {providerSection === item.id && <motion.div layoutId="providerActiveDot" className="ml-auto w-1.5 h-1.5 bg-indigo-600 rounded-full" />}
+                                    </button>
                                 ))}
+                            </nav>
+                        </div>
+
+                        <div className="mt-auto p-8 border-t border-slate-50">
+                            <div className="bg-slate-50 p-6 rounded-3xl flex items-center gap-4 mb-6">
+                                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-indigo-600 font-bold shadow-sm border border-slate-100">
+                                    {user.name.charAt(0)}
+                                </div>
+                                <div className="overflow-hidden">
+                                    <p className="text-sm font-black text-slate-800 truncate">{user.name}</p>
+                                    <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest leading-none">Status: Online</span>
+                                </div>
                             </div>
+                            <button onClick={() => { localStorage.removeItem('token'); window.location.reload(); }} className="w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-all font-black text-xs uppercase tracking-widest">
+                                <LogOut size={20} /> Sign Out
+                            </button>
                         </div>
                     </div>
 
-                    <h2 className="text-3xl font-black mb-6 text-gray-800 flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center"><Wallet size={24} /></div>
-                        Job Pipeline
-                    </h2>
-                    <div className="flex bg-gray-100 p-1 rounded-xl w-fit mb-8 shadow-inner">
-                        {['New Requests', 'Active Jobs', 'Past Jobs'].map(tab => (
-                            <button key={tab} onClick={() => setActiveTab(tab)} className={`py-2 px-6 rounded-lg text-sm font-bold transition-all ${activeTab === tab ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>{tab}</button>
-                        ))}
+                    {/* Provider Main Content */}
+                    <div className="flex-1 p-16 h-screen overflow-y-auto scroll-smooth">
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={providerSection}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                transition={{ duration: 0.2 }}
+                                className="max-w-6xl mx-auto"
+                            >
+                                {providerSection === 'revenue' && (
+                                    <div className="space-y-12">
+                                        <div className="flex justify-between items-end mb-4">
+                                            <div>
+                                                <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight mb-2">Revenue Insights</h2>
+                                                <p className="text-sm text-slate-400 font-bold uppercase tracking-[0.2em] opacity-80">Fiscal Performance Ledger</p>
+                                            </div>
+                                            <div className="bg-emerald-50 text-emerald-600 px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest border border-emerald-100 shadow-sm shadow-emerald-50 flex items-center gap-3">
+                                                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                                                Live Ledger
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                            {[
+                                                { label: 'Total Earnings', value: bookings.filter(b => b.status === 'Completed').reduce((sum, b) => sum + (b.serviceId?.price || 0), 0), icon: BarChart3, color: 'bg-emerald-500', sub: 'Gross Revenue' },
+                                                { label: 'In Escrow', value: bookings.filter(b => b.payment_status === 'Paid' && b.status !== 'Cancelled').reduce((sum, b) => sum + (b.serviceId?.price || 0), 0) - payouts.filter(p => p.payout_status === 'Paid').reduce((sum, p) => sum + (p.amount || 0), 0), icon: Clock, color: 'bg-amber-500', sub: 'Pending Settlement' },
+                                                { label: 'Disbursed', value: payouts.filter(p => p.payout_status === 'Paid').reduce((sum, p) => sum + (p.amount || 0), 0), icon: Wallet, color: 'bg-indigo-500', sub: 'Bank Distributed' }
+                                            ].map((stat, i) => (
+                                                <div key={i} className="bg-white p-10 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-50 relative overflow-hidden group">
+                                                    <div className={`absolute top-0 right-0 w-32 h-32 ${stat.color} opacity-[0.03] rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform duration-700`}></div>
+                                                    <div className="flex items-center gap-4 mb-6">
+                                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold shadow-lg shadow-${stat.color.split('-')[1]}-200 ${stat.color}`}>
+                                                            <stat.icon size={20} />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</p>
+                                                            <p className="text-xs font-bold text-slate-300 uppercase leading-none mt-0.5">{stat.sub}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-baseline gap-2">
+                                                        <span className="text-4xl font-black text-slate-800 tracking-tighter">₹{stat.value.toLocaleString()}</span>
+                                                        <span className="text-[10px] font-black text-slate-400">INR</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div className="bg-white p-12 rounded-[3.5rem] shadow-2xl shadow-slate-200/60 border border-slate-50">
+                                            <h3 className="text-xl font-black text-slate-800 mb-8 flex items-center gap-3"><Users size={24} className="text-indigo-600" /> Recent Handshakes</h3>
+                                            <AnalyticsCharts bookings={bookings.filter(b => b.status === 'Completed')} />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {(providerSection === 'new_requests' || providerSection === 'active_jobs' || providerSection === 'past_jobs') && (
+                                    <div className="space-y-8">
+                                        <div className="flex items-center gap-6 mb-4">
+                                            <div className="p-5 bg-indigo-100 text-indigo-600 rounded-3xl shadow-sm">
+                                                {providerSection === 'new_requests' ? <MessageSquare size={36} /> : 
+                                                 providerSection === 'active_jobs' ? <Clock size={36} /> : <History size={36} />}
+                                            </div>
+                                            <div>
+                                                <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">
+                                                    {providerSection === 'new_requests' ? 'New Requests' : 
+                                                     providerSection === 'active_jobs' ? 'Active Matrix' : 'Job History'}
+                                                </h2>
+                                                <p className="text-sm text-slate-400 font-bold uppercase tracking-[0.2em] opacity-80">
+                                                    {providerSection === 'new_requests' ? 'Incoming Service Orders' : 
+                                                     providerSection === 'active_jobs' ? 'Real-time Deployment Cycle' : 'Platform Transaction History'}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-50 overflow-hidden">
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-left">
+                                                    <thead>
+                                                        <tr className="bg-slate-50/50 border-b border-slate-100">
+                                                            <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Client / Service</th>
+                                                            <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Handshake Date</th>
+                                                            <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Protocol Status</th>
+                                                            <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Gross Value</th>
+                                                            <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Governance</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-50">
+                                                        {bookings
+                                                            .filter(b => {
+                                                                if (providerSection === 'new_requests') return ['Pending', 'Accepted'].includes(b.status);
+                                                                if (providerSection === 'active_jobs') return ['OnTheWay', 'In Progress', 'Paid'].includes(b.status);
+                                                                if (providerSection === 'past_jobs') return ['Completed', 'Cancelled'].includes(b.status);
+                                                                return true;
+                                                            })
+                                                            .map(booking => (
+                                                                <tr key={booking._id} className="hover:bg-slate-50/50 transition-all group">
+                                                                    <td className="px-8 py-8">
+                                                                        <div className="flex flex-col">
+                                                                            <span className="font-bold text-slate-800 text-sm mb-1">{booking.serviceId?.serviceName || 'Legacy Entity'}</span>
+                                                                            <div className="flex items-center gap-2">
+                                                                                <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full"></div>
+                                                                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{booking.userId?.name || 'Anonymous Client'}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className="px-8 py-8">
+                                                                        <div className="flex flex-col">
+                                                                            <span className="text-xs font-extrabold text-slate-600 mb-0.5">{new Date(booking.date).toLocaleDateString()}</span>
+                                                                            <span className="text-[10px] text-slate-400 font-bold uppercase">{booking.time} Relay</span>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className="px-8 py-8 text-center">
+                                                                        <select 
+                                                                            value={booking.status} 
+                                                                            onChange={(e) => handleUpdateBookingStatus(booking._id, e.target.value)}
+                                                                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none border-2 transition-all ${
+                                                                                booking.status === 'Completed' ? 'bg-emerald-50 border-emerald-200 text-emerald-600' :
+                                                                                booking.status === 'Cancelled' ? 'bg-rose-50 border-rose-200 text-rose-600' :
+                                                                                'bg-amber-50 border-amber-200 text-amber-600 focus:border-indigo-500'
+                                                                            }`}
+                                                                        >
+                                                                            <option value="Pending">Pending</option>
+                                                                            <option value="Accepted">Accepted</option>
+                                                                            <option value="OnTheWay">On The Way</option>
+                                                                            <option value="In Progress">In Progress</option>
+                                                                            <option value="Paid">Paid</option>
+                                                                            <option value="Completed">Completed</option>
+                                                                            <option value="Cancelled">Cancelled</option>
+                                                                        </select>
+                                                                    </td>
+                                                                    <td className="px-8 py-8 font-black text-slate-800 text-sm tracking-tight">₹{booking.serviceId?.price || booking.serviceId?.price}</td>
+                                                                    <td className="px-8 py-8 text-right">
+                                                                        <div className="flex items-center justify-end gap-2">
+                                                                            <button onClick={() => setActiveChatBooking(booking)} className="p-3 bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-indigo-600 rounded-2xl transition-all"><MessageSquare size={16} /></button>
+                                                                            <button onClick={() => generateInvoice(booking)} className="p-3 bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-emerald-600 rounded-2xl transition-all"><FileText size={16} /></button>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {providerSection === 'payouts' && (
+                                    <div className="space-y-12">
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight mb-2">Payout Management</h2>
+                                                <p className="text-sm text-slate-400 font-bold uppercase tracking-[0.2em] opacity-80">Fund Extraction & History</p>
+                                            </div>
+                                            <motion.button 
+                                                whileHover={{ scale: 1.05 }} 
+                                                whileTap={{ scale: 0.95 }}
+                                                onClick={async () => {
+                                                    try {
+                                                        await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/payments/request-payout`, {}, { headers: { Authorization: `Bearer ${user.token}` } });
+                                                        toast.success('Withdrawal request submitted for review.');
+                                                        fetchMyPayouts();
+                                                    } catch (e) {
+                                                        toast.error(e.response?.data?.message || 'Withdrawal request failed');
+                                                    }
+                                                }}
+                                                className="bg-indigo-600 text-white px-8 py-4 rounded-[2rem] font-black text-xs uppercase tracking-widest shadow-2xl shadow-indigo-100 flex items-center gap-3"
+                                            >
+                                                <Wallet size={18} /> Execute Withdrawal
+                                            </motion.button>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                            <div className="bg-slate-900 p-12 rounded-[3.5rem] text-white shadow-2xl relative overflow-hidden">
+                                                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[80px] -mr-32 -mt-32"></div>
+                                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em] mb-4">Current Withdrawable Balance</p>
+                                                <div className="flex items-baseline gap-3 mb-10">
+                                                    <span className="text-6xl font-black tracking-tighter">₹{payouts.filter(p => p.payout_status === 'Pending').reduce((sum, p) => sum + (p.amount || 0), 0)}</span>
+                                                    <span className="text-sm font-bold text-slate-500 opacity-60">Pending Settlement</span>
+                                                </div>
+                                                <div className="flex items-center gap-6 pt-10 border-t border-white/5">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] font-black text-slate-500 uppercase">Processing Queue</span>
+                                                        <span className="text-lg font-bold text-slate-200">₹{payouts.filter(p => p.payout_status === 'Pending').reduce((sum, p) => sum + (p.amount || 0), 0)}</span>
+                                                    </div>
+                                                    <div className="w-px h-10 bg-white/5"></div>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] font-black text-slate-500 uppercase">Verification Status</span>
+                                                        <span className="text-lg font-bold text-emerald-400">KYC Validated</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-white p-12 rounded-[3.5rem] shadow-xl border border-slate-50">
+                                                <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-6 border-b border-slate-50 pb-6">Payout History</h3>
+                                                <div className="space-y-6 max-h-[250px] overflow-y-auto pr-4 scrollbar-hide">
+                                                    {payouts.map(p => (
+                                                        <div key={p._id} className="flex justify-between items-center group">
+                                                            <div className="flex items-center gap-4">
+                                                                <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 group-hover:text-indigo-600 transition-colors">
+                                                                    <ClipboardList size={18} />
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-sm font-bold text-slate-800 uppercase tabular-nums">Batch {p._id.slice(-6)}</p>
+                                                                    <p className="text-[10px] text-slate-400 font-bold">{new Date(p.created_at || Date.now()).toLocaleDateString()}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p className="text-sm font-black text-slate-800">₹{p.amount?.toLocaleString()}</p>
+                                                                <span className={`text-[9px] font-black uppercase tracking-widest ${p.payout_status === 'Paid' ? 'text-emerald-500' : 'text-amber-500'}`}>{p.payout_status}</span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                    {payouts.length === 0 && <p className="text-center text-slate-400 italic text-xs py-10">No disbursement activity recorded.</p>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {providerSection === 'portfolio' && (
+                                    <div className="space-y-12">
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight mb-2">Service Portfolio</h2>
+                                                <p className="text-sm text-slate-400 font-bold uppercase tracking-[0.2em] opacity-80">Service-Level Governance Portfolio</p>
+                                            </div>
+                                            <button onClick={() => setProviderSection('add_service')} className="bg-indigo-600 text-white px-8 py-4 rounded-3xl font-black text-xs uppercase tracking-widest shadow-2xl shadow-indigo-100 flex items-center gap-3">
+                                                <CirclePlus size={18} /> Provision New Entity
+                                            </button>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                            {myServices.map(s => (
+                                                <div key={s._id} className="bg-white p-8 rounded-[3rem] shadow-xl border border-slate-50 relative overflow-hidden group">
+                                                    <div className="absolute top-0 right-0 w-2 h-full bg-indigo-600 transform scale-y-0 group-hover:scale-y-100 transition-transform origin-top duration-500"></div>
+                                                    <div className="flex items-center gap-3 mb-6">
+                                                        <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-black uppercase tracking-widest">{s.category}</span>
+                                                        <span className="ml-auto text-sm font-black text-slate-800">₹{s.price}</span>
+                                                    </div>
+                                                    <h3 className="text-xl font-black text-slate-800 mb-2 truncate group-hover:text-indigo-600 transition-colors">{s.serviceName}</h3>
+                                                    <p className="text-xs text-slate-400 font-bold mb-8 line-clamp-2 h-8">{s.description}</p>
+                                                    <div className="flex items-center justify-between pt-6 border-t border-slate-50">
+                                                        <div className="flex items-center gap-2">
+                                                            <MapPin size={12} className="text-indigo-400" />
+                                                            <span className="text-[10px] font-black text-slate-400 capitalize">{s.location}</span>
+                                                        </div>
+                                                        <button onClick={() => handleRemoveMyService(s._id)} className="p-3 bg-white text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all border border-slate-100">
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {myServices.length === 0 && (
+                                                <div className="col-span-full py-32 text-center bg-white rounded-[3.5rem] border-2 border-dashed border-slate-100">
+                                                    <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6"><Briefcase size={32} className="text-slate-200" /></div>
+                                                    <h4 className="text-xl font-black text-slate-800 mb-2">Portfolio Empty</h4>
+                                                    <p className="text-sm text-slate-400 max-w-xs mx-auto mb-8 font-bold uppercase tracking-widest leading-loose">No service entities have been provisioned in your domain namespace.</p>
+                                                    <button onClick={() => setProviderSection('add_service')} className="bg-indigo-600 text-white px-10 py-5 rounded-3xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-indigo-100">Genesis Implementation</button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {providerSection === 'add_service' && (
+                                    <div className="space-y-12">
+                                        <div className="flex items-center gap-6 mb-4">
+                                            <div className="p-5 bg-emerald-100 text-emerald-600 rounded-3xl shadow-sm"><CirclePlus size={36} /></div>
+                                            <div>
+                                                <h2 className="text-3xl font-black text-slate-800 uppercase tracking-tight">Genesis Entity</h2>
+                                                <p className="text-sm text-slate-400 font-bold uppercase tracking-[0.2em] opacity-80">Instantiate New Market Solution</p>
+                                            </div>
+                                        </div>
+
+                                        <form onSubmit={handleAddService} className="bg-white p-12 rounded-[3.5rem] shadow-2xl shadow-slate-200/50 border border-slate-50 grid grid-cols-1 md:grid-cols-2 gap-10">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Service Identity</label>
+                                                <input name="serviceName" placeholder="e.g. Master Domain Cleanse" required className="w-full p-6 bg-slate-50 border-none rounded-[1.5rem] focus:ring-4 focus:ring-indigo-500/10 focus:bg-white outline-none transition-all font-black text-sm tabular-nums" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Operational Category</label>
+                                                <select name="category" className="w-full p-6 bg-slate-50 border-none rounded-[1.5rem] focus:ring-4 focus:ring-indigo-500/10 focus:bg-white outline-none transition-all font-black text-sm uppercase tracking-widest appearance-none">
+                                                    <option value="Cleaning">🧽 Sanitization Hub</option>
+                                                    <option value="Plumbing">🚰 Hydro-Logistics</option>
+                                                    <option value="Electrician">⚡ Kinetic Systems</option>
+                                                    <option value="Gardening">🌻 Biological Maintenance</option>
+                                                </select>
+                                            </div>
+                                            <div className="space-y-2 md:col-span-2">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Executive Overview</label>
+                                                <textarea name="description" placeholder="Technical specifications and value proposition..." rows="4" className="w-full p-8 bg-slate-50 border-none rounded-[2rem] focus:ring-4 focus:ring-indigo-500/10 focus:bg-white outline-none transition-all font-bold text-slate-700 leading-relaxed"></textarea>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Base Pricing Model (₹)</label>
+                                                <input type="number" name="price" placeholder="1000" required className="w-full p-6 bg-slate-50 border-none rounded-[1.5rem] focus:ring-4 focus:ring-indigo-500/10 focus:bg-white outline-none transition-all font-black text-sm" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Deployment Area</label>
+                                                <input name="location" placeholder="City or District Namespace" required className="w-full p-6 bg-slate-50 border-none rounded-[1.5rem] focus:ring-4 focus:ring-indigo-500/10 focus:bg-white outline-none transition-all font-black text-sm uppercase tracking-widest" />
+                                            </div>
+                                            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit" className="md:col-span-2 bg-slate-900 text-white py-8 rounded-[2rem] font-black text-lg shadow-2xl shadow-slate-900/40 uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-4">
+                                                <CirclePlus size={24} /> Commit Entry to Network
+                                            </motion.button>
+                                        </form>
+                                    </div>
+                                )}
+
+                                {providerSection === 'live' && (
+                                    <div className="space-y-12">
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-6">
+                                                <div className="p-5 bg-rose-100 text-rose-600 rounded-3xl shadow-sm"><MapPin size={36} /></div>
+                                                <div>
+                                                    <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Fleet Matrix</h2>
+                                                    <p className="text-sm text-slate-400 font-bold uppercase tracking-[0.2em] opacity-80">Real-time Node Telemetry</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-4 bg-white p-4 rounded-3xl border border-slate-100 shadow-sm">
+                                                <div className="flex flex-col text-right">
+                                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Protocol Sync</span>
+                                                    <span className={`text-[10px] font-black uppercase ${isSimulating ? 'text-rose-500' : 'text-emerald-500'}`}>{isSimulating ? 'Live Emulation' : 'Native GPS'}</span>
+                                                </div>
+                                                <button onClick={() => setIsSimulating(!isSimulating)} className={`px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg ${isSimulating ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-indigo-600 text-white shadow-indigo-100'}`}>
+                                                    {isSimulating ? 'Terminate Test' : 'Run Field Test'}
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                            <div className="lg:col-span-1 space-y-8">
+                                                <div className="bg-slate-900 p-8 rounded-[3rem] text-white shadow-2xl">
+                                                    <div className="flex items-center gap-4 mb-8">
+                                                        <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center"><QrCode size={24} className="text-indigo-400" /></div>
+                                                        <div>
+                                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Master Node ID</p>
+                                                            <p className="text-sm font-black tabular-nums tracking-tighter">{user._id}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="bg-white p-6 rounded-[2rem] flex items-center justify-center shadow-inner">
+                                                        <QRCodeSVG value={user._id} size={180} />
+                                                    </div>
+                                                    <p className="text-center text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mt-8 opacity-60">Verification Credentials</p>
+                                                </div>
+
+                                                <div className="bg-white p-8 rounded-[3rem] shadow-xl border border-slate-100">
+                                                    <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest mb-6 border-b border-slate-50 pb-6 flex justify-between items-center">
+                                                        Active Relays
+                                                        <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full text-[9px]">{bookings.filter(b => b.status === 'OnTheWay').length}</span>
+                                                    </h3>
+                                                    <div className="space-y-4">
+                                                        {bookings.filter(b => b.status === 'OnTheWay').map(b => (
+                                                            <div key={b._id} className="p-4 bg-slate-50 rounded-2xl flex items-center gap-4 border border-slate-100">
+                                                                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-indigo-600 shadow-sm border border-slate-100"><Users size={18} /></div>
+                                                                <div>
+                                                                    <p className="text-xs font-black text-slate-800 truncate max-w-[120px]">{b.serviceId?.serviceName}</p>
+                                                                    <span className="text-[9px] text-slate-400 font-bold uppercase tabular-nums">ID: {b._id.slice(-6)}</span>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                        {bookings.filter(b => b.status === 'OnTheWay').length === 0 && <p className="text-center text-slate-400 text-[10px] italic py-4">No active nodes in field.</p>}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="lg:col-span-2 bg-white rounded-[3.5rem] shadow-2xl overflow-hidden border border-slate-100 h-[600px] relative">
+                                                {bookings.some(b => b.status === 'OnTheWay') ? (
+                                                    <div className="h-full w-full">
+                                                        {bookings.filter(b => b.status === 'OnTheWay').slice(0, 1).map(booking => (
+                                                            <LiveTrackingMap 
+                                                                key={booking._id}
+                                                                providerLocation={liveLocations[booking._id]} 
+                                                                customerLocation={customerLocations[booking._id]} 
+                                                                providerName={user.name} 
+                                                                userRole="provider"
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <div className="h-full w-full bg-slate-50 flex flex-col items-center justify-center">
+                                                        <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-100 mb-6 opacity-30"><ShieldOff size={44} className="text-slate-400" /></div>
+                                                        <h4 className="text-xl font-black text-slate-800 opacity-20 uppercase tracking-widest">No Active Matrix</h4>
+                                                    </div>
+                                                )}
+                                                <div className="absolute bottom-8 left-8 right-8 bg-slate-900/90 backdrop-blur-md p-6 rounded-[2rem] text-white flex justify-between items-center shadow-2xl">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={`w-3 h-3 rounded-full ${bookings.some(b => b.status === 'OnTheWay') ? 'bg-emerald-500 animate-pulse' : 'bg-slate-700'}`}></div>
+                                                        <span className="text-xs font-black uppercase tracking-widest">{bookings.some(b => b.status === 'OnTheWay') ? 'Synchronizing Telemetry' : 'Relay Standby'}</span>
+                                                    </div>
+                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest opacity-60 tabular-nums">Coordinates: 0.00°N 0.00°E</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {providerSection === 'feedback' && (
+                                    <div className="space-y-12">
+                                        <div className="flex items-center gap-6 mb-4">
+                                            <div className="p-5 bg-yellow-100 text-yellow-600 rounded-3xl shadow-sm"><Star size={36} /></div>
+                                            <div>
+                                                <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Market Reputation</h2>
+                                                <p className="text-sm text-slate-400 font-bold uppercase tracking-[0.2em] opacity-80">Consumer Satisfaction Metrics</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-white p-12 rounded-[3.5rem] shadow-2xl shadow-slate-200/50 border border-slate-50">
+                                            <div className="flex flex-col md:flex-row items-center gap-16 mb-16">
+                                                <div className="flex flex-col items-center">
+                                                    <p className="text-5xl font-black text-slate-900 tracking-tighter mb-2">4.9</p>
+                                                    <div className="flex gap-1 text-xl text-yellow-400 mb-4">
+                                                        {[1, 2, 3, 4, 5].map(s => <span key={s}>★</span>)}
+                                                    </div>
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Aggregate Rating</p>
+                                                </div>
+                                                <div className="flex-1 space-y-4 w-full">
+                                                    {[
+                                                        { label: 'Integrity', value: 98, color: 'bg-emerald-500' },
+                                                        { label: 'Technical Proficiency', value: 94, color: 'bg-indigo-500' },
+                                                        { label: 'Timeline Protocol', value: 91, color: 'bg-amber-500' }
+                                                    ].map((m, i) => (
+                                                        <div key={i} className="space-y-2">
+                                                            <div className="flex justify-between text-[10px] font-black text-slate-800 uppercase tracking-widest">
+                                                                <span>{m.label}</span>
+                                                                <span>{m.value}%</span>
+                                                            </div>
+                                                            <div className="h-2 bg-slate-50 rounded-full overflow-hidden">
+                                                                <motion.div initial={{ width: 0 }} animate={{ width: `${m.value}%` }} transition={{ duration: 1, delay: i*0.2 }} className={`h-full ${m.color}`}></motion.div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div className="pt-12 border-t border-slate-50">
+                                                <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-10">Historical Feedback Stream</h3>
+                                                <ReviewsList providerId={user._id} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </motion.div>
+                        </AnimatePresence>
                     </div>
                 </div>
             )}
 
-            {user?.role === 'admin' && (
-                <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="space-y-12 mb-16">
-                    <section>
-                        <h2 className="text-2xl font-black mb-6 flex items-center gap-2 text-red-600"><TriangleAlert /> Pending Approvals</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {unapprovedProviders.map(p => (
-                                <motion.div layout id={`provider-${p._id}`} key={p._id} className="p-6 bg-white rounded-3xl shadow-lg border-2 border-orange-50 flex flex-col gap-4 relative overflow-hidden group">
-                                    <div className="absolute top-0 right-0 w-16 h-16 bg-orange-100 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-150"></div>
-                                    <div className="z-10">
-                                        <h3 className="font-black text-lg">{p.name}</h3>
-                                        <p className="text-xs text-gray-500 font-bold uppercase">{p.email}</p>
-                                    </div>
-                                    <button onClick={() => handleApproveProvider(p._id)} className="w-full bg-black text-white py-3 rounded-2xl font-black text-sm hover:bg-gray-800 transition-colors z-10">Authorize Access</button>
-                                </motion.div>
-                            ))}
-                        </div>
-                    </section>
-                    
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                        <div className="bg-white p-8 rounded-3xl shadow-xl border border-gray-100">
-                            <h2 className="text-2xl font-black mb-6 flex items-center gap-2 text-red-500"><ShieldOff /> Active Disputes</h2>
-                            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
-                                {complaints.length === 0 ? (
-                                    <p className="text-gray-500 italic text-center py-10">No active disputes at this time.</p>
-                                ) : complaints.map(c => (
-                                    <div key={c._id} className="p-5 bg-red-50 rounded-2xl border-l-8 border-red-500">
-                                        <p className="font-black text-red-900 mb-1">Issue reported by Customer</p>
-                                        <p className="text-sm text-red-700 leading-relaxed mb-4">{c.description}</p>
-                                        <div className="flex gap-2">
-                                            <button onClick={() => handleResolveComplaint(c._id, 'dismissed')} className="px-4 py-2 bg-white text-gray-500 rounded-xl text-xs font-black shadow-sm uppercase">Dismiss</button>
-                                            <button onClick={() => handleResolveComplaint(c._id, 'refunded')} className="px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-black shadow-sm uppercase">Process Refund</button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
 
-                        <div className="bg-gray-900 p-8 rounded-3xl shadow-2xl text-white">
-                            <h2 className="text-2xl font-black mb-6 flex items-center gap-2 text-blue-400"><MessageSquare size={28} /> Admin Broadcast</h2>
-                            <p className="text-gray-400 text-sm mb-6 font-bold uppercase tracking-wider">Send an urgent alert to all active users</p>
-                            <form onSubmit={handleBroadcast} className="space-y-4">
-                                <textarea className="w-full bg-gray-800 border-2 border-gray-700 p-5 rounded-2xl text-white outline-none focus:border-blue-500 transition-colors" rows="4" value={broadcastMessage} onChange={(e) => setBroadcastMessage(e.target.value)} placeholder="Type global notification..."></textarea>
-                                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit" className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black text-lg">Emit Broadcast Signal</motion.button>
-                            </form>
+            {user?.role === 'customer' && (
+                <div className="max-w-7xl mx-auto px-4 py-8">
+                    <div className="flex justify-between items-center mb-12">
+                        <motion.h1 initial={{ x: -20 }} animate={{ x: 0 }} className="text-2xl font-bold text-gray-800 tracking-tight font-sans">
+                            My Bookings
+                        </motion.h1>
+                        <div className="bg-blue-50 px-4 py-2 rounded-full flex items-center gap-2">
+                            <div className="w-2 h-2 bg-green-500 rounded-full animate-ping"></div>
+                            <span className="text-sm font-bold text-blue-700 uppercase tracking-widest">CUSTOMER</span>
                         </div>
                     </div>
 
-                    <div className="bg-white p-8 rounded-3xl shadow-xl border border-gray-100">
-                        <h2 className="text-2xl font-black mb-8 flex items-center gap-3">
-                            <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center"><Users size={24} /></div>
-                            User Oversight
+                    <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mt-8">
+                        <h2 className="text-xl font-black mb-8 text-gray-900 flex items-center gap-3">
+                            <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center"><FileText size={24} /></div>
+                            My Booking History
                         </h2>
-                        
-                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
-                            {/* Customers Table */}
-                            <div>
-                                <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-700">All Customers</h3>
-                                <div className="overflow-x-auto bg-gray-50 rounded-2xl p-4 border border-gray-100 shadow-inner">
-                                    <table className="w-full text-left">
-                                        <thead>
-                                            <tr className="border-b border-gray-200">
-                                                <th className="pb-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Name</th>
-                                                <th className="pb-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-100">
-                                            {allUsers.filter(u => u.role === 'customer').map(u => (
-                                                <tr key={u._id} className="hover:bg-white group transition-colors">
-                                                    <td className="py-3 px-1 text-sm">
-                                                        <p className="font-bold text-gray-800 leading-tight">{u.name}</p>
-                                                        <p className="text-[10px] text-gray-400 font-medium">{u.email}</p>
-                                                    </td>
-                                                    <td className="py-3 px-1 text-right">
-                                                        <button onClick={() => handleDeleteUser(u._id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
-                                                            <Trash2 size={16} />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-
-                            {/* Providers Table */}
-                            <div>
-                                <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-700">Service Providers</h3>
-                                <div className="overflow-x-auto bg-gray-50 rounded-2xl p-4 border border-gray-100 shadow-inner">
-                                    <table className="w-full text-left">
-                                        <thead>
-                                            <tr className="border-b border-gray-200">
-                                                <th className="pb-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Provider</th>
-                                                <th className="pb-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Status</th>
-                                                <th className="pb-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-100">
-                                            {allUsers.filter(u => u.role === 'provider').map(u => (
-                                                <tr key={u._id} className="hover:bg-white group transition-colors">
-                                                    <td className="py-3 px-1 text-sm">
-                                                        <p className="font-bold text-gray-800 leading-tight">{u.name}</p>
-                                                        <p className="text-[10px] text-gray-400 font-medium">{u.email}</p>
-                                                    </td>
-                                                    <td className="py-3 px-1">
-                                                        {u.isProviderApproved ? (
-                                                            <span className="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-1 rounded-full flex items-center w-fit gap-1">
-                                                                <UserCheck size={10} /> Verified
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-[10px] bg-orange-100 text-orange-700 font-bold px-2 py-1 rounded-full w-fit block">Pending</span>
-                                                        )}
-                                                    </td>
-                                                    <td className="py-3 px-1 text-right">
-                                                        <button onClick={() => handleDeleteUser(u._id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
-                                                            <Trash2 size={16} />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </motion.div>
-            )}
-
-            {(user?.role === 'customer' || user?.role === 'admin' || (user?.role === 'provider' && user?.isProviderApproved)) && (
-                <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mt-8">
-                    <h2 className="text-3xl font-black mb-8 text-gray-900 flex items-center gap-3">
-                        <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center"><FileText size={24} /></div>
-                        Booking Ledger
-                    </h2>
                     
                     <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
                         <div className="overflow-x-auto">
@@ -652,7 +1511,7 @@ const Dashboard = () => {
                                     <td className="p-4 align-top font-bold text-gray-700 text-sm">₹{booking.serviceId?.price}</td>
                                     <td className="p-4 align-top">
                                         <div className="flex flex-wrap items-center gap-2">
-                                            {user.role === 'customer' && (booking.status === 'Pending' || booking.status === 'Completed') && (
+                                            {user.role === 'customer' && ['Pending', 'Accepted', 'OnTheWay', 'In Progress', 'Completed'].includes(booking.status) && booking.payment_status !== 'Paid' && (
                                                 <button onClick={() => handlePay(booking._id, booking.serviceId?.price)} className="flex items-center gap-2 px-4 py-2 bg-[#00b894] text-white rounded-md text-xs font-bold hover:bg-[#00a383] transition shadow-sm whitespace-nowrap">
                                                     <CreditCard size={14} strokeWidth={3} /> Pay Now
                                                 </button>
@@ -706,6 +1565,7 @@ const Dashboard = () => {
                             </table>
                         </div>
                     </div>
+                </motion.div>
 
                     {/* Desktop Live Maps Section */}
                     {bookings.some(b => b.status === 'OnTheWay') && (
@@ -735,7 +1595,7 @@ const Dashboard = () => {
                             </div>
                         </motion.div>
                     )}
-                </motion.div>
+                </div>
             )}
 
             <AnimatePresence>
@@ -794,9 +1654,6 @@ const Dashboard = () => {
                     <ChatModal booking={activeChatBooking} onClose={() => setActiveChatBooking(null)} />
                 )}
             </AnimatePresence>
-
-            <ReviewsList reviews={[]} />
-
         </motion.div>
     );
 };

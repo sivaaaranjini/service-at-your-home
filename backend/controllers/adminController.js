@@ -136,10 +136,68 @@ const getRevenue = async (req, res) => {
     }
 }
 
+// @desc    Get all payouts/payments
+// @route   GET /api/admin/payouts
+// @access  Private (Admin)
+const getPayouts = async (req, res) => {
+    try {
+        const { data: payouts, error } = await supabase
+            .from('payments')
+            .select(`
+                *,
+                bookingId:booking_id(
+                    *,
+                    serviceId:service_id(service_name, price),
+                    providerId:provider_id(name, email),
+                    customerId:customer_id(name, email)
+                )
+            `)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        res.json(payouts.map(p => ({
+            ...p,
+            _id: p.id,
+            booking: p.bookingId ? {
+                ...p.bookingId,
+                _id: p.bookingId.id,
+                service: p.bookingId.serviceId,
+                provider: p.bookingId.providerId,
+                customer: p.bookingId.customerId
+            } : null
+        })));
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Process/Disburse payout to provider
+// @route   PUT /api/admin/payouts/:id
+// @access  Private (Admin)
+const processPayout = async (req, res) => {
+    try {
+        const { data: updatedPayout, error } = await supabase
+            .from('payments')
+            .update({ payout_status: 'Paid' })
+            .eq('id', req.params.id)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        res.json({ message: 'Payout marked as paid', payout: { ...updatedPayout, _id: updatedPayout.id } });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     getUsers,
     approveProvider,
     deleteUser,
     getAllBookings,
-    getRevenue
+    getRevenue,
+    getPayouts,
+    processPayout
 };

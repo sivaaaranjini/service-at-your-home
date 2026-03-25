@@ -10,28 +10,24 @@ const Services = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [finalSearchTerm, setFinalSearchTerm] = useState('');
 
+    const [offers, setOffers] = useState([]);
+
     const fetchServices = useCallback(async () => {
-        console.log("[DEBUG Services] fetchServices starting...");
         setLoading(true);
         try {
             const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-            console.log("[DEBUG Services] URL:", `${apiUrl}/api/services`);
-            let url = `${apiUrl}/api/services`;
-            const params = {};
-            if (category) params.category = category;
-            if (finalSearchTerm) params.search = finalSearchTerm;
+            
+            // Fetch Services and Offers in parallel
+            const [servicesRes, offersRes] = await Promise.all([
+                axios.get(`${apiUrl}/api/services`, { params: { category, search: finalSearchTerm } }),
+                axios.get(`${apiUrl}/api/offers`)
+            ]);
 
-            const res = await axios.get(url, { params });
-            console.log("[DEBUG Services] response received:", res.data);
-            if (Array.isArray(res.data)) {
-                setServices(res.data);
-            } else {
-                console.error("[DEBUG Services] data is not an array:", res.data);
-                setServices([]);
-            }
+            setServices(Array.isArray(servicesRes.data) ? servicesRes.data : []);
+            setOffers(Array.isArray(offersRes.data) ? offersRes.data : []);
         } catch (error) {
             console.error("[DEBUG Services] error:", error);
-            toast.error(error.response?.data?.message || "Failed to load services. Check your connection.");
+            toast.error("Failed to load platform data.");
         } finally {
             setLoading(false);
         }
@@ -87,7 +83,7 @@ const Services = () => {
                     {services.map((service, idx) => {
                         try {
                             if (!service) return null;
-                            return <ServiceCard key={service?._id || service?.id || idx} service={service} />;
+                            return <ServiceCard key={service?._id || service?.id || idx} service={service} offers={offers} />;
                         } catch (err) {
                             console.error("[DEBUG Services] Error rendering ServiceCard:", err, "Service data:", service);
                             return null;

@@ -29,7 +29,8 @@ ChartJS.register(
     Filler
 );
 
-const AnalyticsCharts = ({ bookings, role, token }) => {
+const AnalyticsCharts = ({ bookings: propBookings, data: propData, role, token }) => {
+    const bookings = propBookings || propData || [];
     const [adminRevenueData, setAdminRevenueData] = useState(null);
 
     useEffect(() => {
@@ -133,7 +134,7 @@ const AnalyticsCharts = ({ bookings, role, token }) => {
                     className="bg-gradient-to-br from-blue-600 to-blue-800 text-white rounded-xl shadow-lg p-6 flex flex-col justify-center items-center"
                 >
                     <p className="text-blue-100 font-medium tracking-wide">{role === 'admin' ? 'Total Gross Volume' : 'Total Earned Revenue'}</p>
-                    <h3 className="text-4xl font-extrabold mt-2">₹{totalRevenue.toLocaleString()}</h3>
+                    <h3 className="text-3xl font-black mt-2">₹{totalRevenue.toLocaleString()}</h3>
                     <p className="text-sm text-blue-200 mt-4">Calculated from Completed Bookings</p>
                 </motion.div>
 
@@ -145,9 +146,9 @@ const AnalyticsCharts = ({ bookings, role, token }) => {
                     >
                         <div className="absolute -right-10 -top-10 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl"></div>
                         <p className="text-emerald-100 font-medium tracking-wide uppercase text-sm">Platform Commission (10%)</p>
-                        <h3 className="text-5xl font-black mt-2 drop-shadow-md">
-                            ₹{adminRevenueData ? adminRevenueData.platformCommission.toLocaleString() : '...'}
-                        </h3>
+                        <h3 className="text-4xl font-black mt-2 drop-shadow-md">
+    ₹{adminRevenueData ? adminRevenueData.platformCommission.toLocaleString() : '...'}
+</h3>
                         <p className="text-xs text-emerald-200 mt-4 font-semibold uppercase tracking-widest">Net Revenue</p>
                     </motion.div>
                 )}
