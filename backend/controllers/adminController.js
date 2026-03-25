@@ -7,12 +7,23 @@ const getUsers = async (req, res) => {
     try {
         const { data: users, error } = await supabase
             .from('users')
-            .select('id, name, email, role, phone, is_provider_approved, created_at, updated_at');
+            .select(`
+                id, name, email, role, phone, is_provider_approved, created_at, updated_at,
+                services(id, service_name, category, price, location)
+            `);
 
         if (error) throw error;
 
-        // Map id to _id for frontend compatibility
-        res.json(users.map(u => ({ ...u, _id: u.id, createdAt: u.created_at })));
+        // Map id to _id and rename services for frontend compatibility
+        const mappedUsers = users.map(u => ({ 
+            ...u, 
+            _id: u.id, 
+            createdAt: u.created_at,
+            isProviderApproved: u.is_provider_approved,
+            services: (u.services && u.services.length > 0) ? u.services.map(s => ({ ...s, _id: s.id })) : []
+        }));
+
+        res.json(mappedUsers);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

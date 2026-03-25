@@ -569,24 +569,34 @@ const Dashboard = () => {
                                 )}
 
                                 {adminSection === 'providers' && (
-                                    <div className="space-y-10">
-                                        <div className="mb-10 px-2 flex items-center gap-5">
-                                            <div className="p-5 bg-orange-100 text-orange-600 rounded-[2rem] shadow-sm"><Clock size={36} /></div>
+                                    <div className="space-y-8">
+                                        <div className="mb-8 px-2 flex items-center gap-4">
+                                            <div className="p-4 bg-orange-100 text-orange-600 rounded-2xl shadow-sm"><Clock size={24} /></div>
                                             <div>
-                                                <h2 className="text-2xl font-black text-gray-900 tracking-tight leading-tight">Provider Intake</h2>
-                                                <p className="text-sm text-gray-500 font-bold uppercase tracking-[0.2em] opacity-60">Onboarding Verification Queue</p>
+                                                <h2 className="text-lg font-black text-gray-900 tracking-tight leading-tight uppercase">Provider Intake</h2>
+                                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em] opacity-60">Onboarding Verification Queue</p>
                                             </div>
                                         </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                             {unapprovedProviders.map(p => (
-                                                <motion.div layout id={`provider-${p._id}`} key={p._id} className="p-10 bg-white rounded-[3.5rem] shadow-xl border border-orange-50 flex flex-col gap-8 relative overflow-hidden group hover:border-orange-200 transition-all hover:translate-y-[-4px]">
-                                                    <div className="absolute top-0 right-0 w-32 h-32 bg-orange-50/50 rounded-bl-[5rem] -mr-12 -mt-12 transition-transform group-hover:scale-125"></div>
-                                                    <div className="z-10 bg-gradient-to-br from-gray-50 to-white w-16 h-16 rounded-[2rem] flex items-center justify-center text-3xl shadow-inner border border-gray-100">👤</div>
+                                                <motion.div layout id={`provider-${p._id}`} key={p._id} className="p-6 bg-white rounded-3xl shadow-xl border border-orange-50 flex flex-col gap-5 relative overflow-hidden group hover:border-orange-200 transition-all hover:translate-y-[-4px]">
+                                                    <div className="absolute top-0 right-0 w-24 h-24 bg-orange-50/50 rounded-bl-[3rem] -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
+                                                    <div className="z-10 bg-gradient-to-br from-gray-50 to-white w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-inner border border-gray-100">👤</div>
                                                     <div className="z-10">
-                                                        <h3 className="font-black text-2xl text-gray-950 leading-tight uppercase tracking-tight">{p.name}</h3>
-                                                        <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mt-1.5 italic opacity-80">{p.email}</p>
+                                                        <h3 className="font-black text-lg text-gray-950 leading-tight uppercase tracking-tight">{p.name}</h3>
+                                                        <div className="flex flex-col gap-1 mt-1.5">
+                                                            <p className="text-[9px] text-gray-400 font-black uppercase tracking-[0.2em] italic opacity-80">{p.email}</p>
+                                                            <p className="text-[10px] text-orange-600 font-black uppercase tracking-widest">{p.phone || 'NO PHONE REGISTERED'}</p>
+                                                        </div>
+                                                        {p.services && p.services.length > 0 && (
+                                                            <div className="mt-4 flex flex-wrap gap-1.5">
+                                                                {p.services.map(s => (
+                                                                    <span key={s._id} className="px-2 py-0.5 bg-orange-50 border border-orange-100 rounded text-[8px] font-black text-orange-500 uppercase">{s.category}</span>
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                    <button onClick={() => handleApproveProvider(p._id)} className="w-full bg-[#1a2332] text-white py-6 rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] hover:bg-orange-600 transition-all shadow-xl hover:shadow-orange-200 z-10">Review & Authorize</button>
+                                                    <button onClick={() => handleApproveProvider(p._id)} className="w-full bg-[#1a2332] text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-[0.15em] hover:bg-orange-600 transition-all shadow-lg hover:shadow-orange-100 z-10">Authorize Access</button>
                                                 </motion.div>
                                             ))}
                                             {unapprovedProviders.length === 0 && (
@@ -600,39 +610,39 @@ const Dashboard = () => {
                                 )}
 
                                 {adminSection === 'disputes' && (
-                                    <div className="space-y-10">
-                                        <div className="flex items-center gap-5 px-2">
-                                            <div className="p-5 bg-red-100 text-red-600 rounded-[2rem] shadow-sm"><ShieldOff size={36} /></div>
+                                    <div className="space-y-8">
+                                        <div className="flex items-center gap-4 px-2">
+                                            <div className="p-4 bg-red-100 text-red-600 rounded-2xl shadow-sm"><ShieldOff size={24} /></div>
                                             <div>
-                                                <h2 className="text-2xl font-black text-gray-900 tracking-tight leading-tight uppercase">Issues</h2>
-                                                <p className="text-sm text-gray-500 font-bold uppercase tracking-[0.2em] opacity-60">High-Priority Incident Queue</p>
+                                                <h2 className="text-lg font-black text-gray-900 tracking-tight leading-tight uppercase text-red-950">Issues</h2>
+                                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em] opacity-60">High-Priority Incident Queue</p>
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-1 gap-8">
+                                        <div className="grid grid-cols-1 gap-6 max-w-2xl">
                                             {complaints.length === 0 ? (
-                                                <div className="bg-white p-24 rounded-[3.5rem] shadow-xl border border-gray-100 text-center grayscale opacity-40">
-                                                    <div className="text-7xl mb-6 flex justify-center">🕊️</div>
-                                                    <p className="text-2xl font-black italic font-serif text-gray-400 uppercase tracking-widest">Protocol Status: Harmonious</p>
+                                                <div className="bg-white p-20 rounded-[3rem] shadow-xl border border-gray-100 text-center grayscale opacity-40">
+                                                    <div className="text-6xl mb-4 flex justify-center">🕊️</div>
+                                                    <p className="text-xl font-black italic font-serif text-gray-400 uppercase tracking-[0.2em]">Protocol Status: Harmonious</p>
                                                 </div>
                                             ) : (
                                                 complaints.map(c => (
-                                                    <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} key={c._id} className="p-10 bg-white rounded-[3rem] shadow-xl border border-red-50 relative group overflow-hidden hover:border-red-200 transition-all">
-                                                        <div className="absolute top-0 right-0 w-32 h-32 bg-red-50 rounded-bl-[5rem] -mr-10 -mt-10 transition-transform group-hover:scale-110"></div>
+                                                    <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} key={c._id} className="p-6 bg-white rounded-3xl shadow-xl border border-red-50 relative group overflow-hidden hover:border-red-200 transition-all">
+                                                        <div className="absolute top-0 right-0 w-24 h-24 bg-red-50 rounded-bl-[3rem] -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
                                                         <div className="relative z-10">
-                                                            <div className="flex justify-between items-center mb-8">
-                                                                <div className="flex items-center gap-3">
-                                                                    <span className="w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
-                                                                    <p className="font-black text-red-900 text-sm uppercase tracking-widest">Incident #ID-{c._id.slice(-6)}</p>
+                                                            <div className="flex justify-between items-center mb-5">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping"></span>
+                                                                    <p className="font-black text-red-900 text-[10px] uppercase tracking-widest">ID-{c._id.slice(-6)}</p>
                                                                 </div>
-                                                                <span className="bg-red-600 text-white text-[9px] font-black px-5 py-2 rounded-full uppercase tracking-tighter shadow-lg shadow-red-200">Critical Priority</span>
+                                                                <span className="bg-red-600 text-white text-[8px] font-black px-4 py-1.5 rounded-full uppercase tracking-tighter shadow-lg shadow-red-100">Critical Priority</span>
                                                             </div>
-                                                            <div className="bg-red-50/50 p-8 rounded-[2rem] border-l-8 border-red-500 mb-10">
-                                                                <p className="text-xl text-red-950 leading-relaxed font-bold italic">"{c.description}"</p>
+                                                            <div className="bg-red-50/50 p-6 rounded-2xl border-l-[6px] border-red-500 mb-6">
+                                                                <p className="text-base text-red-950 leading-relaxed font-bold italic">"{c.description}"</p>
                                                             </div>
-                                                            <div className="flex gap-4">
-                                                                <button onClick={() => handleResolveComplaint(c._id, 'dismissed')} className="flex-1 bg-gray-100 text-gray-500 py-5 rounded-2xl font-black text-xs uppercase hover:bg-gray-200 transition-all active:scale-95 tracking-widest">Insignificant Action</button>
-                                                                <button onClick={() => handleResolveComplaint(c._id, 'refunded')} className="flex-1 bg-red-600 text-white py-5 rounded-2xl font-black text-xs uppercase shadow-xl shadow-red-200 hover:bg-red-700 hover:-translate-y-1 transition-all active:scale-95 tracking-widest">Execute Full Refund</button>
+                                                            <div className="flex gap-3">
+                                                                <button onClick={() => handleResolveComplaint(c._id, 'dismissed')} className="flex-1 bg-gray-100 text-gray-500 py-3 rounded-xl font-black text-[10px] uppercase hover:bg-gray-200 transition-all active:scale-95 tracking-widest">Dismiss</button>
+                                                                <button onClick={() => handleResolveComplaint(c._id, 'refunded')} className="flex-1 bg-red-600 text-white py-3 rounded-xl font-black text-[10px] uppercase shadow-lg shadow-red-100 hover:bg-red-700 hover:-translate-y-0.5 transition-all active:scale-95 tracking-widest">Refund</button>
                                                             </div>
                                                         </div>
                                                     </motion.div>
@@ -643,23 +653,23 @@ const Dashboard = () => {
                                 )}
 
                                 {adminSection === 'broadcast' && (
-                                    <div className="bg-[#1a2332] p-16 rounded-[4rem] shadow-2xl text-white relative overflow-hidden ring-8 ring-white/5">
-                                        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px] -mr-64 -mt-64"></div>
-                                        <div className="relative z-10 max-w-3xl">
-                                            <div className="mb-12 flex items-center gap-6">
-                                                <div className="p-6 bg-gradient-to-tr from-indigo-600 to-blue-500 text-white rounded-[2.5rem] shadow-2xl shadow-indigo-600/30 animate-pulse"><MessageSquare size={44} /></div>
+                                    <div className="bg-[#1a2332] p-10 rounded-[3rem] shadow-2xl text-white relative overflow-hidden ring-4 ring-white/5 max-w-2xl">
+                                        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-indigo-600/10 rounded-full blur-[100px] -mr-48 -mt-48"></div>
+                                        <div className="relative z-10">
+                                            <div className="mb-8 flex items-center gap-5">
+                                                <div className="p-4 bg-gradient-to-tr from-indigo-600 to-blue-500 text-white rounded-2xl shadow-xl shadow-indigo-600/20 animate-pulse"><MessageSquare size={32} /></div>
                                                 <div>
-                                                    <h2 className="text-3xl font-black tracking-tight leading-none mb-2 uppercase">Broadcast</h2>
-                                                    <p className="text-indigo-400 text-xs font-black uppercase tracking-[0.3em] opacity-80">Unified Master Messaging Protocol</p>
+                                                    <h2 className="text-xl font-black tracking-tight leading-none mb-1 uppercase text-indigo-50">Broadcast</h2>
+                                                    <p className="text-indigo-400 text-[10px] font-black uppercase tracking-[0.2em] opacity-80">Unified Master Messaging Protocol</p>
                                                 </div>
                                             </div>
-                                            <p className="text-gray-400 text-xl mb-12 leading-relaxed font-bold">Transmit an instantaneous, encrypted alert to all active nodes across the ServiceAtYourHome ecosystem.</p>
-                                            <form onSubmit={handleBroadcast} className="space-y-8">
+                                            <p className="text-gray-400 text-sm mb-8 leading-relaxed font-bold">Transmit an instantaneous, encrypted alert to all active nodes in the ecosystem.</p>
+                                            <form onSubmit={handleBroadcast} className="space-y-6">
                                                 <div className="relative group">
-                                                    <textarea className="w-full bg-white/5 border-2 border-white/10 p-10 rounded-[2.5rem] text-white outline-none focus:border-indigo-500 focus:bg-white/10 transition-all text-xl font-bold placeholder:text-gray-600 shadow-inner" rows="6" value={broadcastMessage} onChange={(e) => setBroadcastMessage(e.target.value)} placeholder="Type global transmission content..."></textarea>
-                                                    <div className="absolute bottom-6 right-8 text-[10px] font-black text-gray-600 uppercase tracking-widest">Admin Authorization Required</div>
+                                                    <textarea className="w-full bg-white/5 border-2 border-white/10 p-6 rounded-3xl text-white outline-none focus:border-indigo-500 focus:bg-white/10 transition-all text-base font-bold placeholder:text-gray-600 shadow-inner" rows="4" value={broadcastMessage} onChange={(e) => setBroadcastMessage(e.target.value)} placeholder="Type global transmission content..."></textarea>
+                                                    <div className="absolute bottom-4 right-6 text-[8px] font-black text-gray-600 uppercase tracking-widest">Admin Authorization Required</div>
                                                 </div>
-                                                <motion.button whileHover={{ scale: 1.02, backgroundColor: '#4f46e5' }} whileTap={{ scale: 0.98 }} type="submit" className="w-full bg-indigo-600 text-white py-8 rounded-[2rem] font-black text-2xl shadow-2xl shadow-indigo-900/40 uppercase tracking-[0.2em] transition-all">Execute Broadcast</motion.button>
+                                                <motion.button whileHover={{ scale: 1.02, backgroundColor: '#4f46e5' }} whileTap={{ scale: 0.98 }} type="submit" className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-indigo-900/20 uppercase tracking-[0.2em] transition-all">Execute Broadcast</motion.button>
                                             </form>
                                         </div>
                                     </div>
@@ -839,8 +849,9 @@ const Dashboard = () => {
                                                     <thead>
                                                         <tr className="bg-gray-50/50 border-b border-gray-100">
                                                             <th className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest">PROVIDER</th>
-                                                            <th className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">SERVICES</th>
-                                                            <th className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">PROTOCOL</th>
+                                                            <th className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest">CONTACT</th>
+                                                            <th className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">OFFERINGS</th>
+                                                            <th className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">GOVERNANCE</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-gray-50">
@@ -857,8 +868,15 @@ const Dashboard = () => {
                                                                         </div>
                                                                     </div>
                                                                 </td>
+                                                                <td className="px-8 py-6">
+                                                                    <p className="text-[10px] font-black text-gray-700 uppercase tracking-widest">{u.phone || 'UNAVAILABLE'}</p>
+                                                                </td>
                                                                 <td className="px-8 py-6 text-center">
-                                                                    <span className="text-[10px] font-bold text-gray-500">{u.email}</span>
+                                                                    <div className="flex flex-wrap justify-center gap-1">
+                                                                        {u.services && u.services.length > 0 ? u.services.map(s => (
+                                                                            <span key={s._id} className="px-2 py-0.5 bg-indigo-50 text-indigo-500 rounded text-[8px] font-black uppercase">{s.service_name}</span>
+                                                                        )) : <span className="text-[10px] text-gray-300 italic">No Listings</span>}
+                                                                    </div>
                                                                 </td>
                                                                 <td className="px-8 py-6 text-right">
                                                                     <button onClick={() => handleDeleteUser(u._id)} className="px-4 py-1.5 bg-white border border-gray-200 rounded text-[10px] font-bold text-red-500 uppercase hover:bg-red-50 transition-all">
@@ -1307,8 +1325,8 @@ const Dashboard = () => {
                                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Deployment Area</label>
                                                 <input name="location" placeholder="City or District Namespace" required className="w-full p-6 bg-slate-50 border-none rounded-[1.5rem] focus:ring-4 focus:ring-indigo-500/10 focus:bg-white outline-none transition-all font-black text-sm uppercase tracking-widest" />
                                             </div>
-                                            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit" className="md:col-span-2 bg-slate-900 text-white py-8 rounded-[2rem] font-black text-lg shadow-2xl shadow-slate-900/40 uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-4">
-                                                <CirclePlus size={24} /> Commit Entry to Network
+                                            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit" className="md:col-span-2 bg-slate-900 text-white py-5 rounded-2xl font-black text-sm shadow-2xl shadow-slate-900/10 uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-4">
+                                                <CirclePlus size={18} /> Commit Entry to Network
                                             </motion.button>
                                         </form>
                                     </div>
