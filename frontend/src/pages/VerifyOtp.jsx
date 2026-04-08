@@ -4,8 +4,10 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useContext } from 'react';
 import AuthContext from '../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 const VerifyOtp = () => {
+    const { t } = useTranslation();
     const [otp, setOtp] = useState('');
     const location = useLocation();
     const navigate = useNavigate();
@@ -17,25 +19,25 @@ const VerifyOtp = () => {
         try {
             const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/verify-otp`, { email, otp });
             login(res.data);
-            toast.success('Account verified!');
+            toast.success(t('otp.success'));
 
             if (res.data.role === 'admin') navigate('/admin/dashboard');
             else if (res.data.role === 'provider') navigate('/provider/dashboard');
             else navigate('/');
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Verification failed');
+            toast.error(error.response?.data?.message || t('otp.failed'));
         }
     };
 
     if (!email) {
-        return <div className="text-center p-10">Invalid access. Please register first.</div>;
+        return <div className="text-center p-10">{t('otp.invalid_access')}</div>;
     }
 
     return (
         <div className="flex justify-center items-center h-screen bg-gray-100">
             <div className="bg-white p-8 rounded-lg shadow-md w-96">
-                <h2 className="text-2xl font-bold mb-6 text-center">Verify OTP</h2>
-                <p className="mb-4 text-center text-gray-600">Enter the OTP sent to {email}</p>
+                <h2 className="text-2xl font-bold mb-6 text-center">{t('otp.title')}</h2>
+                <p className="mb-4 text-center text-gray-600">{t('otp.enter_otp', { email })}</p>
                 <form onSubmit={handleSubmit}>
                     <div className="mb-6">
                         <input
@@ -52,7 +54,7 @@ const VerifyOtp = () => {
                         type="submit"
                         className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
                     >
-                        Verify
+                        {t('otp.verify')}
                     </button>
                 </form>
             </div>

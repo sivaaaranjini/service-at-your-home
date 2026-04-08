@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import { useTranslation } from 'react-i18next';
 
 const Register = () => {
+    const { t } = useTranslation();
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -21,20 +23,20 @@ const Register = () => {
         e.preventDefault();
         try {
             await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/register`, formData);
-            toast.success('Registration successful. Please check your email for the OTP.');
+            toast.success(t('auth.reg_success'));
             navigate('/verify-otp', { state: { email: formData.email } });
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Registration failed');
+            toast.error(error.response?.data?.message || t('auth.reg_failed'));
         }
     };
 
     return (
         <div className="flex justify-center items-center h-screen bg-gray-100">
             <div className="bg-white p-8 rounded-lg shadow-md w-96">
-                <h2 className="text-2xl font-bold mb-6 text-center">Register</h2>
+                <h2 className="text-2xl font-bold mb-6 text-center">{t('auth.register')}</h2>
                 <form onSubmit={handleSubmit}>
                     <div className="mb-4">
-                        <label className="block text-gray-700 mb-2">Name</label>
+                        <label className="block text-gray-700 mb-2">{t('auth.name')}</label>
                         <input
                             type="text"
                             name="name"
@@ -45,7 +47,7 @@ const Register = () => {
                         />
                     </div>
                     <div className="mb-4">
-                        <label className="block text-gray-700 mb-2">Email</label>
+                        <label className="block text-gray-700 mb-2">{t('auth.email')}</label>
                         <input
                             type="email"
                             name="email"
@@ -56,7 +58,7 @@ const Register = () => {
                         />
                     </div>
                     <div className="mb-4">
-                        <label className="block text-gray-700 mb-2">Password</label>
+                        <label className="block text-gray-700 mb-2">{t('auth.password')}</label>
                         <input
                             type="password"
                             name="password"
@@ -67,7 +69,7 @@ const Register = () => {
                         />
                     </div>
                     <div className="mb-4">
-                        <label className="block text-gray-700 mb-2">Address</label>
+                        <label className="block text-gray-700 mb-2">{t('auth.address')}</label>
                         <input
                             type="text"
                             name="address"
@@ -78,28 +80,28 @@ const Register = () => {
                         />
                     </div>
                     <div className="mb-6">
-                        <label className="block text-gray-700 mb-2">I am a...</label>
+                        <label className="block text-gray-700 mb-2">{t('auth.i_am_a')}</label>
                         <select
                             name="role"
                             className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500"
                             value={formData.role}
                             onChange={handleChange}
                         >
-                            <option value="customer">Customer</option>
-                            <option value="provider">Service Provider</option>
+                            <option value="customer">{t('auth.customer')}</option>
+                            <option value="provider">{t('auth.service_provider')}</option>
                         </select>
                     </div>
                     <button
                         type="submit"
                         className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
                     >
-                        Register
+                        {t('auth.register')}
                     </button>
                 </form>
                 <p className="mt-4 text-center text-sm">
-                    Already have an account? <Link to="/login" className="text-blue-600">Login</Link>
+                    {t('auth.have_account')} <Link to="/login" className="text-blue-600">{t('auth.login')}</Link>
                 </p>
-            </div >
+            </div>
         </div >
     );
 };

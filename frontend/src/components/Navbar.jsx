@@ -1,15 +1,26 @@
 import { useState, useContext } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
-import { FaUserCircle, FaBars, FaTimes } from 'react-icons/fa';
+import { FaUserCircle, FaBars, FaTimes, FaGlobe, FaSearch } from 'react-icons/fa';
+import { Menu, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NotificationBell from './NotificationBell';
+import { useTranslation } from 'react-i18next';
 
 const Navbar = () => {
     const { user, logout } = useContext(AuthContext);
     const [isOpen, setIsOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [isLangOpen, setIsLangOpen] = useState(false);
     const navigate = useNavigate();
+    const location = useLocation();
+    const { t, i18n } = useTranslation();
+    const { isSidebarOpen, toggleSidebar, searchTerm, setSearchTerm } = useContext(AuthContext);
+
+    const changeLanguage = (lng) => {
+        i18n.changeLanguage(lng);
+        setIsLangOpen(false);
+    };
 
     const handleLogout = () => {
         logout();
@@ -19,29 +30,56 @@ const Navbar = () => {
 
     const toggleMenu = () => setIsOpen(!isOpen);
 
-    const navLinks = [
-        { name: 'Services', path: '/services' },
-        ...(user ? [
-            {
-                name: user.role === 'provider' ? 'Dashboard' : user.role === 'admin' ? 'Admin Panel' : 'My Bookings',
-                path: `/${user.role}/dashboard`
-            }
-        ] : [
-            { name: 'Login', path: '/login' },
-            { name: 'Register', path: '/register', isButton: true }
-        ])
-    ];
+    const navLinks = user?.role === 'customer' 
+        ? []
+        : [
+            { name: t('nav.services'), path: '/services' },
+            { name: 'Plans', path: '/subscriptions' },
+            ...(user ? [
+                {
+                    name: user.role === 'provider' ? t('nav.dashboard') : t('nav.admin_panel'),
+                    path: `/${user.role}/dashboard`
+                }
+            ] : [
+                { name: t('nav.login'), path: '/login' },
+                { name: t('nav.register'), path: '/register', isButton: true }
+            ])
+        ];
 
     return (
         <nav className="bg-white shadow-md sticky top-0 z-[1000]">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between h-16">
-                    {/* Logo */}
-                    <div className="flex items-center">
+                    {/* Logo & Hamburger */}
+                    <div className="flex items-center gap-4">
+                        {user?.role === 'customer' && (
+                            <button 
+                                onClick={toggleSidebar}
+                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600"
+                            >
+                                <Menu size={24} />
+                            </button>
+                        )}
                         <Link to="/" className="text-2xl font-bold text-blue-600 tracking-tighter">
                             Service<span className="text-gray-900">@Home</span>
                         </Link>
                     </div>
+
+                    {/* Central Search Bar */}
+                    {user?.role === 'customer' && location.pathname !== '/' && (
+                        <div className="hidden md:flex flex-1 max-w-md mx-8 items-center relative">
+                            <div className="absolute left-4 text-gray-400">
+                                <Search size={18} />
+                            </div>
+                            <input 
+                                type="text"
+                                placeholder={t('home.search_placeholder_long')}
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full bg-gray-50 border-none px-12 py-2.5 rounded-full text-sm font-semibold focus:ring-4 focus:ring-blue-500/10 placeholder-gray-400 transition-all outline-none"
+                            />
+                        </div>
+                    )}
 
                     {/* Desktop Menu */}
                     <div className="hidden md:flex items-center space-x-6">
@@ -86,7 +124,7 @@ const Navbar = () => {
                                                     onClick={() => setIsProfileOpen(false)}
                                                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 font-medium"
                                                 >
-                                                    View Profile
+                                                    {t('nav.profile')}
                                                 </Link>
                                                 <button
                                                     onClick={() => {
@@ -95,7 +133,7 @@ const Navbar = () => {
                                                     }}
                                                     className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-bold"
                                                 >
-                                                    Log Out
+                                                    {t('nav.logout')}
                                                 </button>
                                             </motion.div>
                                         )}
@@ -103,6 +141,31 @@ const Navbar = () => {
                                 </div>
                             </div>
                         )}
+
+                        {/* Language Selector */}
+                        <div className="relative ml-4">
+                            <button 
+                                onClick={() => setIsLangOpen(!isLangOpen)}
+                                className="flex items-center gap-2 p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-700"
+                            >
+                                <FaGlobe className="text-blue-500" />
+                                <span className="text-xs font-bold uppercase">{(i18n.language || 'en').split('-')[0]}</span>
+                            </button>
+                            <AnimatePresence>
+                                {isLangOpen && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: 10 }}
+                                        className="absolute right-0 mt-2 w-32 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-[1100]"
+                                    >
+                                        <button onClick={() => changeLanguage('en')} className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 font-medium">English</button>
+                                        <button onClick={() => changeLanguage('hi')} className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 font-medium">हिन्दी (Hindi)</button>
+                                        <button onClick={() => changeLanguage('ta')} className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 font-medium">தமிழ் (Tamil)</button>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
                     </div>
 
                     {/* Mobile Menu Button */}
@@ -153,9 +216,19 @@ const Navbar = () => {
                                     onClick={handleLogout}
                                     className="block w-full text-left px-4 py-3 text-red-600 font-bold hover:bg-red-50 rounded-xl transition"
                                 >
-                                    Log Out
+                                    {t('nav.logout')}
                                 </button>
                             )}
+                            
+                            {/* Mobile Language Selector */}
+                            <div className="pt-4 mt-4 border-t border-gray-100">
+                                <p className="text-xs font-bold text-gray-400 uppercase mb-3 px-4">Select Language</p>
+                                <div className="flex flex-wrap gap-2 px-2">
+                                    <button onClick={() => { changeLanguage('en'); setIsOpen(false); }} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${i18n.language === 'en' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>English</button>
+                                    <button onClick={() => { changeLanguage('hi'); setIsOpen(false); }} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${i18n.language === 'hi' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>हिन्दी</button>
+                                    <button onClick={() => { changeLanguage('ta'); setIsOpen(false); }} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${i18n.language === 'ta' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>தமிழ்</button>
+                                </div>
+                            </div>
                         </div>
                     </motion.div>
                 )}

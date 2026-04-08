@@ -25,8 +25,17 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
+    const [isSidebarOpen, setSidebarOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const toggleSidebar = () => setSidebarOpen(!isSidebarOpen);
+
     return (
-        <AuthContext.Provider value={{ user, login, logout, loading }}>
+        <AuthContext.Provider value={{ 
+            user, login, logout, loading, 
+            isSidebarOpen, toggleSidebar, setSidebarOpen,
+            searchTerm, setSearchTerm 
+        }}>
             {children}
         </AuthContext.Provider>
     );

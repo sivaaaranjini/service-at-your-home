@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/Navbar';
+import CustomerSidebar from './components/CustomerSidebar';
 import Footer from './components/Footer';
 import Home from './pages/Home';
 import { NotificationProvider } from './context/NotificationContext';
@@ -14,6 +15,7 @@ import ServiceDetails from './pages/ServiceDetails';
 import VerifyOtp from './pages/VerifyOtp';
 import Services from './pages/Services';
 import Dashboard from './pages/Dashboard';
+import Subscriptions from './pages/Subscriptions';
 import Profile from './pages/Profile';
 import socket from './utils/socket';
 
@@ -39,6 +41,7 @@ function App() {
         <NotificationProvider>
           <div className="flex flex-col min-h-screen">
             <Navbar />
+            <CustomerSidebar />
             <div className="flex-grow">
               <Routes>
                 <Route path="/" element={<Home />} />
@@ -47,6 +50,7 @@ function App() {
                 <Route path="/verify-otp" element={<VerifyOtp />} />
                 <Route path="/services" element={<Services />} />
                 <Route path="/services/:id" element={<ServiceDetails />} />
+                <Route path="/subscriptions" element={<Subscriptions />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/customer/dashboard" element={<Dashboard />} />
                 <Route path="/provider/dashboard" element={<Dashboard />} />
